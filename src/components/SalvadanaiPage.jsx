@@ -14,6 +14,7 @@ export default function SalvadanaiPage({ wallets, transactions }) {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmoji, setNewEmoji] = useState('🏦');
+  const [newInitial, setNewInitial] = useState('');
   const [expanded, setExpanded] = useState(null);
 
   const handleCreate = async (e) => {
@@ -22,10 +23,12 @@ export default function SalvadanaiPage({ wallets, transactions }) {
     await addDoc(collection(db, 'users', user.uid, 'wallets'), {
       name: newName.trim(),
       emoji: newEmoji,
+      initialBalance: newInitial !== '' ? parseFloat(newInitial) : 0,
       createdAt: serverTimestamp(),
     });
     setNewName('');
     setNewEmoji('🏦');
+    setNewInitial('');
     setCreating(false);
   };
 
@@ -37,8 +40,10 @@ export default function SalvadanaiPage({ wallets, transactions }) {
   const walletTransactions = (walletId) =>
     transactions.filter((t) => t.walletId === walletId).sort((a, b) => b.date.localeCompare(a.date));
 
-  const walletBalance = (walletId) =>
-    walletTransactions(walletId).reduce((s, t) => s + t.amount, 0);
+  const walletBalance = (wallet) => {
+    const initial = wallet.initialBalance ?? 0;
+    return initial + walletTransactions(wallet.id).reduce((s, t) => s + t.amount, 0);
+  };
 
   return (
     <div className="salvadanai-page">
@@ -63,11 +68,20 @@ export default function SalvadanaiPage({ wallets, transactions }) {
           <div className="create-row">
             <input
               type="text"
-              placeholder="Nome salvadanaio (es. Contanti, Satispay...)"
+              placeholder="Nome (es. Contanti, Satispay...)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               required
               autoFocus
+            />
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Saldo iniziale €"
+              value={newInitial}
+              onChange={(e) => setNewInitial(e.target.value)}
+              className="input-initial"
             />
             <button type="submit" className="btn-save-wallet">Crea</button>
           </div>
@@ -80,7 +94,7 @@ export default function SalvadanaiPage({ wallets, transactions }) {
 
       <div className="wallets-list">
         {wallets.map((w) => {
-          const balance = walletBalance(w.id);
+          const balance = walletBalance(w);
           const txs = walletTransactions(w.id);
           const isOpen = expanded === w.id;
 

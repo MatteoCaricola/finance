@@ -74,9 +74,14 @@
   border-radius: 8px;
   font-size: 14px;
   outline: none;
+  min-width: 0;
 }
 
 .create-row input:focus { border-color: #6366f1; }
+
+.input-initial {
+  flex: 0 0 140px !important;
+}
 
 .btn-save-wallet {
   padding: 9px 20px;

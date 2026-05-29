@@ -9,7 +9,7 @@ const CATEGORIES_EXPENSE = ['Cibo', 'Trasporti', 'Casa', 'Abbigliamento', 'Svago
 
 const today = () => new Date().toISOString().split('T')[0];
 
-export default function TransactionForm({ onAdded }) {
+export default function TransactionForm({ onAdded, wallets = [] }) {
   const { user } = useAuth();
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
@@ -17,26 +17,48 @@ export default function TransactionForm({ onAdded }) {
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(today());
   const [loading, setLoading] = useState(false);
+  const [isMovement, setIsMovement] = useState(false);
+  const [walletId, setWalletId] = useState('');
 
   const categories = type === 'income' ? CATEGORIES_INCOME : CATEGORIES_EXPENSE;
+
+  const handleTypeChange = (newType) => {
+    setType(newType);
+    setCategory('');
+    if (newType !== 'expense') { setIsMovement(false); setWalletId(''); }
+  };
+
+  const handleMovementToggle = (e) => {
+    setIsMovement(e.target.checked);
+    if (!e.target.checked) setWalletId('');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!amount || !category || !date) return;
+    if (isMovement && !walletId) return;
     setLoading(true);
     try {
-      await addDoc(collection(db, 'users', user.uid, 'transactions'), {
+      const data = {
         type,
         amount: parseFloat(amount),
         category,
         description,
         date,
         createdAt: serverTimestamp(),
-      });
+      };
+      if (isMovement && walletId) {
+        const wallet = wallets.find((w) => w.id === walletId);
+        data.walletId = walletId;
+        data.walletName = wallet?.name ?? '';
+      }
+      await addDoc(collection(db, 'users', user.uid, 'transactions'), data);
       setAmount('');
       setDescription('');
       setCategory('');
       setDate(today());
+      setIsMovement(false);
+      setWalletId('');
       onAdded?.();
     } finally {
       setLoading(false);
@@ -51,14 +73,14 @@ export default function TransactionForm({ onAdded }) {
           <button
             type="button"
             className={type === 'expense' ? 'active expense' : ''}
-            onClick={() => { setType('expense'); setCategory(''); }}
+            onClick={() => handleTypeChange('expense')}
           >
             Uscita
           </button>
           <button
             type="button"
             className={type === 'income' ? 'active income' : ''}
-            onClick={() => { setType('income'); setCategory(''); }}
+            onClick={() => handleTypeChange('income')}
           >
             Entrata
           </button>
@@ -107,6 +129,31 @@ export default function TransactionForm({ onAdded }) {
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
+
+        {type === 'expense' && wallets.length > 0 && (
+          <div className="movement-row">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={isMovement}
+                onChange={handleMovementToggle}
+              />
+              Sposta in un salvadanaio
+            </label>
+            {isMovement && (
+              <select
+                value={walletId}
+                onChange={(e) => setWalletId(e.target.value)}
+                required={isMovement}
+              >
+                <option value="">Seleziona salvadanaio...</option>
+                {wallets.map((w) => (
+                  <option key={w.id} value={w.id}>{w.emoji} {w.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
 
         <button type="submit" className={`btn-submit ${type}`} disabled={loading}>
           {loading ? 'Salvataggio...' : '+ Aggiungi'}

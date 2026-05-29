@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import TransactionForm from './TransactionForm';
 import TransactionList from './TransactionList';
 import GraficiPage from './GraficiPage';
+import SalvadanaiPage from './SalvadanaiPage';
 import './Dashboard.css';
 
 const fmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
@@ -14,6 +15,7 @@ const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio'
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const [transactions, setTransactions] = useState([]);
+  const [wallets, setWallets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState('movimenti');
 
@@ -25,15 +27,15 @@ export default function Dashboard() {
   const [filterSearch, setFilterSearch] = useState('');
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'users', user.uid, 'transactions'),
-      orderBy('date', 'desc')
+    const unsub1 = onSnapshot(
+      query(collection(db, 'users', user.uid, 'transactions'), orderBy('date', 'desc')),
+      (snap) => { setTransactions(snap.docs.map((d) => ({ id: d.id, ...d.data() }))); setLoading(false); }
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setTransactions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
-    return unsub;
+    const unsub2 = onSnapshot(
+      query(collection(db, 'users', user.uid, 'wallets'), orderBy('createdAt')),
+      (snap) => setWallets(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    );
+    return () => { unsub1(); unsub2(); };
   }, [user.uid]);
 
   const years = [...new Set(transactions.map((t) => t.date.split('-')[0]))].sort().reverse();
@@ -158,10 +160,14 @@ export default function Dashboard() {
               </div>
 
               <div className="dash-grid">
-                <TransactionForm />
+                <TransactionForm wallets={wallets} />
                 <TransactionList transactions={displayed} loading={loading} />
               </div>
             </>
+          )}
+
+          {page === 'salvadanai' && (
+            <SalvadanaiPage wallets={wallets} transactions={transactions} />
           )}
 
           {page === 'grafici' && (

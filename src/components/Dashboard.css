@@ -194,9 +194,91 @@
   align-items: stretch;
 }
 
+.btn-burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 4px;
+}
+
+.burger-icon,
+.burger-icon::before,
+.burger-icon::after {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: #374151;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.burger-icon::before,
+.burger-icon::after {
+  content: '';
+  position: absolute;
+  left: 0;
+}
+
+.burger-icon::before { top: -6px; }
+.burger-icon::after  { top: 6px; }
+
+.burger-icon.open { background: transparent; }
+.burger-icon.open::before { transform: rotate(45deg);  top: 0; }
+.burger-icon.open::after  { transform: rotate(-45deg); top: 0; }
+
+.mobile-nav {
+  display: none;
+  max-height: 0;
+  overflow: hidden;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  transition: max-height 0.25s ease;
+}
+
+.mobile-nav.open { max-height: 300px; }
+
+.mobile-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+}
+
+.mobile-nav button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.mobile-nav button:hover  { background: #f3f4f6; color: #111827; }
+.mobile-nav button.active { background: #ede9fe; color: #6366f1; }
+
+.mobile-nav .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
 @media (max-width: 700px) {
-  .dash-body { flex-direction: column; height: auto; }
+  .btn-burger  { display: flex; }
+  .mobile-nav  { display: block; }
+  .sidebar     { display: none; }
+
+  .dash-body   { flex-direction: column; height: auto; }
+  .dash-content { padding: 16px; }
   .summary-grid { grid-template-columns: 1fr; }
-  .dash-grid { grid-template-columns: 1fr; }
+  .dash-grid    { grid-template-columns: 1fr; }
   .summary-value { font-size: 18px; }
 }

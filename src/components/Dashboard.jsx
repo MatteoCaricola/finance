@@ -11,6 +11,11 @@ import './Dashboard.css';
 
 const fmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
 const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const NAV = [
+  { id: 'movimenti',  label: 'Movimenti',  icon: '↕' },
+  { id: 'salvadanai', label: 'Salvadanai', icon: '🐷' },
+  { id: 'grafici',    label: 'Grafici',    icon: '📊' },
+];
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -20,6 +25,7 @@ export default function Dashboard() {
   const [page, setPage] = useState('movimenti');
 
   const [accordionOpen, setAccordionOpen] = useState(false);
+  const [burgerOpen, setBurgerOpen] = useState(false);
   const [filterMonth, setFilterMonth] = useState('');
   const [filterYear, setFilterYear] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -89,8 +95,27 @@ export default function Dashboard() {
         <div className="dash-user">
           <img src={user.photoURL} alt="" className="avatar" />
           <button className="btn-logout" onClick={logout}>Esci</button>
+          <button className="btn-burger" onClick={() => setBurgerOpen((v) => !v)} aria-label="Menu">
+            <span className={`burger-icon ${burgerOpen ? 'open' : ''}`} />
+          </button>
         </div>
       </header>
+
+      <nav className={`mobile-nav ${burgerOpen ? 'open' : ''}`}>
+        <ul>
+          {NAV.map((item) => (
+            <li key={item.id}>
+              <button
+                className={page === item.id ? 'active' : ''}
+                onClick={() => { setPage(item.id); setBurgerOpen(false); }}
+              >
+                <span className="nav-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
       <div className="dash-body">
         <Sidebar active={page} onChange={setPage} />

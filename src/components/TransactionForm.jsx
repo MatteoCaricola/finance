@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import './TransactionForm.css';
 
 const CATEGORIES_INCOME = ['Stipendio', 'Freelance', 'Regalo', 'Investimenti', 'Altro'];
-const CATEGORIES_EXPENSE = ['Cibo', 'Trasporti', 'Casa', 'Abbigliamento', 'Svago', 'Salute', 'Abbonamenti', 'Risparmio', 'Lavoro', 'Altro'];
+const CATEGORIES_EXPENSE = ['Cibo', 'Trasporti', 'Casa', 'Abbigliamento', 'Svago', 'Salute', 'Sport', 'Abbonamenti', 'Risparmio', 'Lavoro', 'Altro'];
 
 const today = () => new Date().toISOString().split('T')[0];
 

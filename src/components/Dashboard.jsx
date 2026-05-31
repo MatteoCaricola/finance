@@ -198,6 +198,8 @@ export default function Dashboard() {
           {page === 'grafici' && (
             <GraficiPage transactions={transactions} />
           )}
+
+          <footer className="dash-footer">v{__APP_VERSION__}</footer>
         </main>
       </div>
     </div>

@@ -34,10 +34,12 @@ function buildCategoryData(transactions) {
   return Object.entries(map).sort(([, a], [, b]) => b - a).map(([name, value]) => ({ name, value }));
 }
 
-export default function GraficiPage({ transactions }) {
+export default function GraficiPage({ transactions, wallets = [] }) {
   const { user } = useAuth();
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState(true);
+
+  const [fundFilter, setFundFilter] = useState('all');
 
   const [accordionOpen, setAccordionOpen] = useState(false);
   const [filterMonth, setFilterMonth]       = useState('');
@@ -92,11 +94,49 @@ export default function GraficiPage({ transactions }) {
     filterSearch && `"${filterSearch}"`,
   ].filter(Boolean);
 
-  const monthlyData  = buildMonthlyData(filtered);
-  const categoryData = buildCategoryData(filtered);
+  const fundFiltered = (() => {
+    if (fundFilter === 'all')     return filtered.filter((t) => t.type !== 'transfer');
+    if (fundFilter === 'general') return filtered.filter((t) => !t.walletId && !t.fromWalletId && t.type !== 'transfer');
+    // specific wallet: remap inflows as income, outflows as expense
+    return filtered
+      .filter((t) => t.walletId === fundFilter || t.fromWalletId === fundFilter)
+      .map((t) => ({ ...t, type: t.walletId === fundFilter ? 'income' : 'expense' }));
+  })();
+
+  const selectedWallet = wallets.find((w) => w.id === fundFilter);
+
+  const monthlyData  = buildMonthlyData(fundFiltered);
+  const categoryData = buildCategoryData(fundFiltered);
 
   return (
     <div className="grafici-page">
+      <div className="fund-selector">
+        <span className="fund-selector-label">Fondo:</span>
+        <div className="fund-tabs">
+          <button
+            className={fundFilter === 'all' ? 'active' : ''}
+            onClick={() => setFundFilter('all')}
+          >
+            Tutti
+          </button>
+          <button
+            className={fundFilter === 'general' ? 'active' : ''}
+            onClick={() => setFundFilter('general')}
+          >
+            Generale
+          </button>
+          {wallets.map((w) => (
+            <button
+              key={w.id}
+              className={fundFilter === w.id ? 'active' : ''}
+              onClick={() => setFundFilter(w.id)}
+            >
+              {w.emoji} {w.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="accordion">
         <button
           className={`accordion-trigger ${accordionOpen ? 'open' : ''}`}
@@ -143,9 +183,20 @@ export default function GraficiPage({ transactions }) {
         )}
       </div>
 
+      {selectedWallet && (selectedWallet.initialBalance ?? 0) > 0 && (
+        <div className="initial-balance-bar">
+          <span className="initial-balance-label">Saldo iniziale</span>
+          <span className="initial-balance-value">{fmt(selectedWallet.initialBalance)}</span>
+        </div>
+      )}
+
       <div className="grafici-grid">
         <div className="chart-card">
-          <h2>Entrate vs Uscite (ultimi 6 mesi)</h2>
+          <h2>
+            {selectedWallet
+              ? `${selectedWallet.emoji} ${selectedWallet.name} — ultimi 6 mesi`
+              : 'Entrate vs Uscite (ultimi 6 mesi)'}
+          </h2>
           {monthlyData.length === 0
             ? <p className="chart-empty">Nessun dato disponibile.</p>
             : (

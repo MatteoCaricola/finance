@@ -21,7 +21,10 @@ export default function TransactionList({ transactions, loading }) {
   if (loading) return <div className="list-card"><p className="empty">Caricamento...</p></div>;
   if (!transactions.length) return <div className="list-card"><p className="empty">Nessuna transazione.</p></div>;
 
-  const total = transactions.reduce((s, t) => s + (t.type === 'expense' ? -t.amount : t.amount), 0);
+  const total = transactions.reduce((s, t) => {
+    if (t.type === 'transfer') return s;
+    return s + (t.type === 'expense' ? -t.amount : t.amount);
+  }, 0);
   const visible = expanded ? transactions : transactions.slice(0, INITIAL_LIMIT);
   const hasMore = transactions.length > INITIAL_LIMIT;
 
@@ -34,11 +37,14 @@ export default function TransactionList({ transactions, loading }) {
             <div className={`tx-dot ${tx.type}`} />
             <div className="tx-info">
               <span className="tx-category">{tx.category}</span>
-              {tx.description && <span className="tx-desc">{tx.description}</span>}
+              {tx.type === 'transfer'
+                ? <span className="tx-desc">↔ {tx.fromWalletName} → {tx.walletName}</span>
+                : tx.description && <span className="tx-desc">{tx.description}</span>
+              }
             </div>
             <span className="tx-date">{fmtDate(tx.date)}</span>
             <span className={`tx-amount ${tx.type}`}>
-              {tx.type === 'expense' ? '−' : '+'}{fmt(tx.amount)}
+              {tx.type === 'transfer' ? '↔' : tx.type === 'expense' ? '−' : '+'}{fmt(tx.amount)}
             </span>
             <button className="tx-delete" onClick={() => handleDelete(tx.id)} title="Elimina">×</button>
           </li>
@@ -48,9 +54,9 @@ export default function TransactionList({ transactions, loading }) {
         <span>Totale</span>
         <span className={total >= 0 ? 'income' : 'expense'}>{total >= 0 ? '+' : '−'}{fmt(Math.abs(total))}</span>
       </div>
-      {hasMore && !expanded && (
-        <button className="btn-show-more" onClick={() => setExpanded(true)}>
-          Visualizza altro ({transactions.length - INITIAL_LIMIT})
+      {hasMore && (
+        <button className="btn-show-more" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? 'Visualizza meno' : `Visualizza altro (${transactions.length - INITIAL_LIMIT})`}
         </button>
       )}
     </div>

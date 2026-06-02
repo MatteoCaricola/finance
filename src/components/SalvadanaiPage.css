@@ -226,3 +226,7 @@
   font-weight: 600;
   color: #10b981;
 }
+
+.wallet-tx-amount.out {
+  color: #ef4444;
+}

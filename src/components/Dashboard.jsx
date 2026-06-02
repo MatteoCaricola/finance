@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from './Sidebar';
@@ -7,14 +7,19 @@ import TransactionForm from './TransactionForm';
 import TransactionList from './TransactionList';
 import GraficiPage from './GraficiPage';
 import SalvadanaiPage from './SalvadanaiPage';
+import ImpostazioniPage from './ImpostazioniPage';
+import NotificationBell from './NotificationBell';
 import './Dashboard.css';
 
 const fmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
 const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const DEFAULT_INCOME  = ['Stipendio', 'Freelance', 'Regalo', 'Investimenti', 'Altro'];
+const DEFAULT_EXPENSE = ['Cibo', 'Trasporti', 'Casa', 'Abbigliamento', 'Svago', 'Salute', 'Sport', 'Abbonamenti', 'Risparmio', 'Lavoro', 'Altro'];
 const NAV = [
-  { id: 'movimenti',  label: 'Movimenti',  icon: '↕' },
-  { id: 'salvadanai', label: 'Salvadanai', icon: '🐷' },
-  { id: 'grafici',    label: 'Grafici',    icon: '📊' },
+  { id: 'movimenti',    label: 'Movimenti',    icon: '↕' },
+  { id: 'salvadanai',   label: 'Salvadanai',   icon: '🐷' },
+  { id: 'grafici',      label: 'Grafici',       icon: '📊' },
+  { id: 'impostazioni', label: 'Impostazioni',  icon: '⚙️' },
 ];
 
 export default function Dashboard() {
@@ -22,6 +27,8 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const [wallets, setWallets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [categoriesIncome, setCategoriesIncome] = useState(DEFAULT_INCOME);
+  const [categoriesExpense, setCategoriesExpense] = useState(DEFAULT_EXPENSE);
   const [page, setPage] = useState('movimenti');
 
   const [accordionOpen, setAccordionOpen] = useState(false);
@@ -41,7 +48,17 @@ export default function Dashboard() {
       query(collection(db, 'users', user.uid, 'wallets'), orderBy('createdAt')),
       (snap) => setWallets(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
     );
-    return () => { unsub1(); unsub2(); };
+    const unsub3 = onSnapshot(
+      doc(db, 'users', user.uid, 'settings', 'categories'),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.income?.length)  setCategoriesIncome(data.income);
+          if (data.expense?.length) setCategoriesExpense(data.expense);
+        }
+      }
+    );
+    return () => { unsub1(); unsub2(); unsub3(); };
   }, [user.uid]);
 
   const years = [...new Set(transactions.map((t) => t.date.split('-')[0]))].sort().reverse();
@@ -74,6 +91,7 @@ export default function Dashboard() {
   const totalExpense = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const totalBalance = totalIncome - totalExpense;
 
+
   const clearFilters = () => { setFilterMonth(''); setFilterYear(''); setFilterType(''); setFilterCategory(''); setFilterSearch(''); };
 
   const activeBadges = [
@@ -93,6 +111,7 @@ export default function Dashboard() {
           <span>Finance Tracker</span>
         </div>
         <div className="dash-user">
+          <NotificationBell />
           <img src={user.photoURL} alt="" className="avatar" />
           <button className="btn-logout" onClick={logout}>Esci</button>
           <button className="btn-burger" onClick={() => setBurgerOpen((v) => !v)} aria-label="Menu">
@@ -185,7 +204,7 @@ export default function Dashboard() {
               </div>
 
               <div className="dash-grid">
-                <TransactionForm wallets={wallets} />
+                <TransactionForm wallets={wallets} categoriesIncome={categoriesIncome} categoriesExpense={categoriesExpense} />
                 <TransactionList transactions={displayed} loading={loading} />
               </div>
             </>
@@ -196,7 +215,11 @@ export default function Dashboard() {
           )}
 
           {page === 'grafici' && (
-            <GraficiPage transactions={transactions} />
+            <GraficiPage transactions={transactions} wallets={wallets} />
+          )}
+
+          {page === 'impostazioni' && (
+            <ImpostazioniPage categoriesIncome={categoriesIncome} categoriesExpense={categoriesExpense} />
           )}
 
           <footer className="dash-footer">v{__APP_VERSION__}</footer>

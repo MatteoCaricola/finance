@@ -4,12 +4,39 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import './TransactionForm.css';
 
-const CATEGORIES_INCOME = ['Stipendio', 'Freelance', 'Regalo', 'Investimenti', 'Altro'];
-const CATEGORIES_EXPENSE = ['Cibo', 'Trasporti', 'Casa', 'Abbigliamento', 'Svago', 'Salute', 'Sport', 'Abbonamenti', 'Risparmio', 'Lavoro', 'Altro'];
+function CategoryInfo() {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="cat-info-wrap">
+      <button type="button" className="cat-info-btn" onClick={() => setOpen((v) => !v)} aria-label="Info categorie">i</button>
+      {open && (
+        <span className="cat-info-popup">
+          Puoi creare e modificare le tue categorie dalla sezione <strong>Impostazioni</strong>.
+          <button type="button" className="cat-info-close" onClick={() => setOpen(false)}>×</button>
+        </span>
+      )}
+    </span>
+  );
+}
+
+function WalletInfo() {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="cat-info-wrap">
+      <button type="button" className="cat-info-btn" onClick={() => setOpen((v) => !v)} aria-label="Info salvadanaio">i</button>
+      {open && (
+        <span className="cat-info-popup">
+          Seleziona da quale salvadanaio prelevare i soldi. Se lasci vuoto, il movimento verrà registrato sui <strong>fondi generali</strong>.
+          <button type="button" className="cat-info-close" onClick={() => setOpen(false)}>×</button>
+        </span>
+      )}
+    </span>
+  );
+}
 
 const today = () => new Date().toISOString().split('T')[0];
 
-export default function TransactionForm({ onAdded, wallets = [] }) {
+export default function TransactionForm({ onAdded, wallets = [], categoriesIncome = [], categoriesExpense = [] }) {
   const { user } = useAuth();
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
@@ -19,28 +46,31 @@ export default function TransactionForm({ onAdded, wallets = [] }) {
   const [loading, setLoading] = useState(false);
   const [isMovement, setIsMovement] = useState(false);
   const [walletId, setWalletId] = useState('');
+  const [fromWalletId, setFromWalletId] = useState('');
 
-  const categories = type === 'income' ? CATEGORIES_INCOME : CATEGORIES_EXPENSE;
+  const categories = type === 'income' ? categoriesIncome : categoriesExpense;
+  const isTransfer = isMovement && walletId && fromWalletId;
 
   const handleTypeChange = (newType) => {
     setType(newType);
     setCategory('');
-    if (newType !== 'expense') { setIsMovement(false); setWalletId(''); }
+    if (newType !== 'expense') { setIsMovement(false); setWalletId(''); setFromWalletId(''); }
   };
 
   const handleMovementToggle = (e) => {
     setIsMovement(e.target.checked);
-    if (!e.target.checked) setWalletId('');
+    if (!e.target.checked) { setWalletId(''); setFromWalletId(''); }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!amount || !category || !date) return;
     if (isMovement && !walletId) return;
+    if (isTransfer && fromWalletId === walletId) return;
     setLoading(true);
     try {
       const data = {
-        type,
+        type: isTransfer ? 'transfer' : type,
         amount: parseFloat(amount),
         category,
         description,
@@ -48,9 +78,14 @@ export default function TransactionForm({ onAdded, wallets = [] }) {
         createdAt: serverTimestamp(),
       };
       if (isMovement && walletId) {
-        const wallet = wallets.find((w) => w.id === walletId);
+        const toWallet = wallets.find((w) => w.id === walletId);
         data.walletId = walletId;
-        data.walletName = wallet?.name ?? '';
+        data.walletName = toWallet?.name ?? '';
+      }
+      if (fromWalletId) {
+        const fromWallet = wallets.find((w) => w.id === fromWalletId);
+        data.fromWalletId = fromWalletId;
+        data.fromWalletName = fromWallet?.name ?? '';
       }
       await addDoc(collection(db, 'users', user.uid, 'transactions'), data);
       setAmount('');
@@ -59,6 +94,7 @@ export default function TransactionForm({ onAdded, wallets = [] }) {
       setDate(today());
       setIsMovement(false);
       setWalletId('');
+      setFromWalletId('');
       onAdded?.();
     } finally {
       setLoading(false);
@@ -111,7 +147,7 @@ export default function TransactionForm({ onAdded, wallets = [] }) {
         </div>
 
         <div className="form-group">
-          <label>Categoria</label>
+          <label>Categoria <CategoryInfo /></label>
           <select value={category} onChange={(e) => setCategory(e.target.value)} required>
             <option value="">Seleziona...</option>
             {categories.map((c) => (
@@ -132,6 +168,16 @@ export default function TransactionForm({ onAdded, wallets = [] }) {
 
         {type === 'expense' && wallets.length > 0 && (
           <div className="movement-row">
+            <div className="form-group wallet-select-group">
+              <label>Da salvadanaio <WalletInfo /></label>
+              <select value={fromWalletId} onChange={(e) => setFromWalletId(e.target.value)}>
+                <option value="">— Fondi generali —</option>
+                {wallets.map((w) => (
+                  <option key={w.id} value={w.id}>{w.emoji} {w.name}</option>
+                ))}
+              </select>
+            </div>
+
             <label className="checkbox-label">
               <input
                 type="checkbox"
@@ -140,23 +186,30 @@ export default function TransactionForm({ onAdded, wallets = [] }) {
               />
               Sposta in un salvadanaio
             </label>
+
             {isMovement && (
               <select
                 value={walletId}
                 onChange={(e) => setWalletId(e.target.value)}
                 required={isMovement}
               >
-                <option value="">Seleziona salvadanaio...</option>
-                {wallets.map((w) => (
+                <option value="">Seleziona destinazione...</option>
+                {wallets.filter((w) => w.id !== fromWalletId).map((w) => (
                   <option key={w.id} value={w.id}>{w.emoji} {w.name}</option>
                 ))}
               </select>
             )}
+
+            {isTransfer && (
+              <p className="transfer-hint">
+                ↔ Trasferimento tra salvadanai — non verrà conteggiato nelle spese
+              </p>
+            )}
           </div>
         )}
 
-        <button type="submit" className={`btn-submit ${type}`} disabled={loading}>
-          {loading ? 'Salvataggio...' : '+ Aggiungi'}
+        <button type="submit" className={`btn-submit ${isTransfer ? 'transfer' : type}`} disabled={loading}>
+          {loading ? 'Salvataggio...' : isTransfer ? '↔ Trasferisci' : '+ Aggiungi'}
         </button>
       </form>
     </div>

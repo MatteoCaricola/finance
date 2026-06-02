@@ -1,9 +1,10 @@
 import './Sidebar.css';
 
 const NAV = [
-  { id: 'movimenti',   label: 'Movimenti',   icon: '↕' },
-  { id: 'salvadanai',  label: 'Salvadanai',  icon: '🐷' },
-  { id: 'grafici',     label: 'Grafici',     icon: '📊' },
+  { id: 'movimenti',    label: 'Movimenti',    icon: '↕' },
+  { id: 'salvadanai',   label: 'Salvadanai',   icon: '🐷' },
+  { id: 'grafici',      label: 'Grafici',       icon: '📊' },
+  { id: 'impostazioni', label: 'Impostazioni',  icon: '⚙️' },
 ];
 
 export default function Sidebar({ active, onChange }) {

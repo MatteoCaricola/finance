@@ -1,0 +1,115 @@
+.impostazioni-page {
+  padding-bottom: 32px;
+}
+
+.impostazioni-page h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 24px;
+}
+
+.cat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.cat-panel {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+.cat-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.cat-panel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cat-panel-header.income .cat-panel-dot { background: #10b981; }
+.cat-panel-header.expense .cat-panel-dot { background: #ef4444; }
+
+.cat-list {
+  padding: 8px 0;
+  min-height: 48px;
+}
+
+.cat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 20px;
+  font-size: 14px;
+  color: #374151;
+  transition: background 0.15s;
+}
+
+.cat-item:hover { background: #f9fafb; }
+
+.cat-remove {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  color: #d1d5db;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color 0.15s;
+}
+
+.cat-remove:hover:not(:disabled) { color: #ef4444; }
+.cat-remove:disabled { opacity: 0.4; cursor: default; }
+
+.cat-add-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.cat-add-row input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #374151;
+  outline: none;
+}
+
+.cat-add-row input:focus { border-color: #6366f1; }
+
+.btn-add {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+
+.btn-add:disabled { opacity: 0.45; cursor: default; }
+.btn-add.income  { background: #d1fae5; color: #065f46; }
+.btn-add.expense { background: #fee2e2; color: #991b1b; }
+.btn-add.income:hover:not(:disabled)  { background: #a7f3d0; }
+.btn-add.expense:hover:not(:disabled) { background: #fecaca; }
+
+@media (max-width: 700px) {
+  .cat-grid { grid-template-columns: 1fr; }
+}

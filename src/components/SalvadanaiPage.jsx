@@ -37,12 +37,17 @@ export default function SalvadanaiPage({ wallets, transactions }) {
     await deleteDoc(doc(db, 'users', user.uid, 'wallets', id));
   };
 
-  const walletTransactions = (walletId) =>
-    transactions.filter((t) => t.walletId === walletId).sort((a, b) => b.date.localeCompare(a.date));
+  const walletTransactions = (wId) => {
+    const inflows  = transactions.filter((t) => t.walletId === wId).map((t) => ({ ...t, _dir: 'in' }));
+    const outflows = transactions.filter((t) => t.fromWalletId === wId).map((t) => ({ ...t, _dir: 'out' }));
+    return [...inflows, ...outflows].sort((a, b) => b.date.localeCompare(a.date));
+  };
 
   const walletBalance = (wallet) => {
-    const initial = wallet.initialBalance ?? 0;
-    return initial + walletTransactions(wallet.id).reduce((s, t) => s + t.amount, 0);
+    const initial  = wallet.initialBalance ?? 0;
+    const inflows  = transactions.filter((t) => t.walletId === wallet.id).reduce((s, t) => s + t.amount, 0);
+    const outflows = transactions.filter((t) => t.fromWalletId === wallet.id).reduce((s, t) => s + t.amount, 0);
+    return initial + inflows - outflows;
   };
 
   return (
@@ -123,16 +128,29 @@ export default function SalvadanaiPage({ wallets, transactions }) {
                 <div className="wallet-transactions">
                   {txs.length === 0
                     ? <p className="empty-tx">Nessun movimento.</p>
-                    : txs.map((tx) => (
-                      <div key={tx.id} className="wallet-tx">
-                        <div className="wallet-tx-info">
-                          <span className="wallet-tx-cat">{tx.category}</span>
-                          {tx.description && <span className="wallet-tx-desc">{tx.description}</span>}
+                    : txs.map((tx) => {
+                      const isOut = tx._dir === 'out';
+                      const counterpart = isOut ? tx.walletName : tx.fromWalletName;
+                      return (
+                        <div key={tx.id + tx._dir} className="wallet-tx">
+                          <div className="wallet-tx-info">
+                            <span className="wallet-tx-cat">{tx.category}</span>
+                            {counterpart && (
+                              <span className="wallet-tx-desc">
+                                {isOut ? `→ ${counterpart}` : `← ${counterpart}`}
+                              </span>
+                            )}
+                            {!counterpart && tx.description && (
+                              <span className="wallet-tx-desc">{tx.description}</span>
+                            )}
+                          </div>
+                          <span className="wallet-tx-date">{fmtDate(tx.date)}</span>
+                          <span className={`wallet-tx-amount ${isOut ? 'out' : ''}`}>
+                            {isOut ? '−' : '+'}{fmt(tx.amount)}
+                          </span>
                         </div>
-                        <span className="wallet-tx-date">{fmtDate(tx.date)}</span>
-                        <span className="wallet-tx-amount">+{fmt(tx.amount)}</span>
-                      </div>
-                    ))
+                      );
+                    })
                   }
                 </div>
               )}

@@ -49,8 +49,9 @@
   flex-shrink: 0;
 }
 
-.tx-dot.income { background: #10b981; }
-.tx-dot.expense { background: #ef4444; }
+.tx-dot.income   { background: #10b981; }
+.tx-dot.expense  { background: #ef4444; }
+.tx-dot.transfer { background: #6366f1; }
 
 .tx-info {
   flex: 1;
@@ -85,8 +86,9 @@
   flex-shrink: 0;
 }
 
-.tx-amount.income { color: #10b981; }
-.tx-amount.expense { color: #ef4444; }
+.tx-amount.income   { color: #10b981; }
+.tx-amount.expense  { color: #ef4444; }
+.tx-amount.transfer { color: #6366f1; }
 
 .tx-delete {
   background: none;

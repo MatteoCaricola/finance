@@ -1,5 +1,13 @@
 export const CHANGELOG = [
   {
+    version: '1.0.2',
+    date: '2026-06-02',
+    notes: [
+      'App installabile sul tuo dispositivo — clicca sull\'icona di download 🔽 in alto a destra nell\'header per aggiungerla alla schermata Home',
+      'Supporto offline: i tuoi movimenti sono visibili anche senza connessione e le nuove transazioni vengono sincronizzate automaticamente al ritorno della rete',
+    ],
+  },
+  {
     version: '1.0.1',
     date: '2026-06-02',
     notes: [

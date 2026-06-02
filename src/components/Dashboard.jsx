@@ -9,6 +9,7 @@ import GraficiPage from './GraficiPage';
 import SalvadanaiPage from './SalvadanaiPage';
 import ImpostazioniPage from './ImpostazioniPage';
 import NotificationBell from './NotificationBell';
+import InstallButton from './InstallButton';
 import './Dashboard.css';
 
 const fmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
@@ -111,6 +112,7 @@ export default function Dashboard() {
           <span>Finance Tracker</span>
         </div>
         <div className="dash-user">
+          <InstallButton />
           <NotificationBell />
           <img src={user.photoURL} alt="" className="avatar" />
           <button className="btn-logout" onClick={logout}>Esci</button>

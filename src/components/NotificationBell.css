@@ -37,15 +37,28 @@
 }
 
 .notif-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 320px;
+  position: fixed;
+  top: 64px;
+  right: 12px;
+  left: 12px;
+  width: auto;
+  max-width: 360px;
+  margin-left: auto;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
   z-index: 200;
   overflow: hidden;
+}
+
+@media (min-width: 480px) {
+  .notif-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    left: auto;
+    width: 320px;
+  }
 }
 
 .notif-panel-header {

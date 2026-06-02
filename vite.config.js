@@ -39,7 +39,7 @@ export default defineConfig({
       },
     }),
   ],
-  base: './',
+  base: '/finance/',
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },

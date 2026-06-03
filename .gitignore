@@ -14,6 +14,7 @@ dist-ssr
 .env
 .env.local
 scripts/serviceAccount.json
+scripts/vapidKeys.json
 
 # Editor directories and files
 .vscode/*

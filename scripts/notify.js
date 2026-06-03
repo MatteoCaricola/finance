@@ -1,75 +1,46 @@
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { getMessaging } from 'firebase-admin/messaging';
+import webpush from 'web-push';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const serviceAccount = JSON.parse(
-  readFileSync(join(__dirname, 'serviceAccount.json'), 'utf8')
-);
-
+const serviceAccount = JSON.parse(readFileSync(join(__dirname, 'serviceAccount.json'), 'utf8'));
+const { publicKey, privateKey } = JSON.parse(readFileSync(join(__dirname, 'vapidKeys.json'), 'utf8'));
 const { PUSH } = await import('./pushMessage.js');
 
 initializeApp({ credential: cert(serviceAccount) });
-
 const db = getFirestore();
-const messaging = getMessaging();
 
-// Legge tutti i token FCM salvati
-const snapshot = await db.collection('fcmTokens').get();
-const tokens = snapshot.docs.map((d) => d.id).filter(Boolean);
+webpush.setVapidDetails('mailto:matteo050903@gmail.com', publicKey, privateKey);
 
-if (tokens.length === 0) {
-  console.log('Nessun token trovato. Nessuna notifica inviata.');
+const snapshot = await db.collection('pushSubscriptions').get();
+
+if (snapshot.empty) {
+  console.log('Nessuna subscription trovata. Nessuna notifica inviata.');
   process.exit(0);
 }
 
-console.log(`Invio notifica a ${tokens.length} dispositivo/i...`);
+console.log(`Invio a ${snapshot.size} dispositivo/i...`);
 console.log(`Titolo: ${PUSH.title}`);
 console.log(`Testo:  ${PUSH.body}`);
 
-// Invia in batch (FCM accetta max 500 token per volta)
-const BATCH = 500;
-for (let i = 0; i < tokens.length; i += BATCH) {
-  const batch = tokens.slice(i, i + BATCH);
-  const response = await messaging.sendEachForMulticast({
-    tokens: batch,
-    notification: {
-      title: PUSH.title,
-      body: PUSH.body,
-    },
-    webpush: {
-      notification: {
-        icon: 'https://matteocaricola.github.io/finance/favicon.svg',
-        badge: 'https://matteocaricola.github.io/finance/favicon.svg',
-        requireInteraction: false,
-      },
-      fcmOptions: {
-        link: 'https://matteocaricola.github.io/finance/',
-      },
-    },
-  });
+const payload = JSON.stringify({ title: PUSH.title, body: PUSH.body, url: 'https://matteocaricola.github.io/finance/' });
 
-  console.log(`Batch ${Math.floor(i / BATCH) + 1}: ${response.successCount} ok, ${response.failureCount} falliti`);
-
-  // Rimuove token non validi da Firestore
-  const toDelete = [];
-  response.responses.forEach((r, idx) => {
-    if (!r.success && (
-      r.error?.code === 'messaging/invalid-registration-token' ||
-      r.error?.code === 'messaging/registration-token-not-registered'
-    )) {
-      toDelete.push(batch[idx]);
+for (const docSnap of snapshot.docs) {
+  const { endpoint, keys } = docSnap.data();
+  try {
+    await webpush.sendNotification({ endpoint, keys }, payload);
+    console.log(`✓ Inviata: ${endpoint.slice(-30)}`);
+  } catch (err) {
+    console.warn(`✗ Fallita (${err.statusCode}): ${endpoint.slice(-30)}`);
+    if (err.statusCode === 410 || err.statusCode === 404) {
+      await docSnap.ref.delete();
+      console.log('  → Subscription rimossa (scaduta)');
     }
-  });
-
-  for (const token of toDelete) {
-    await db.collection('fcmTokens').doc(token).delete();
-    console.log(`Token rimosso (non valido): ${token.slice(0, 20)}...`);
   }
 }
 
-console.log('Notifica inviata con successo.');
+console.log('Fatto.');

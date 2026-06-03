@@ -1,23 +1,37 @@
 import { useState, useEffect } from 'react';
-import { getMessaging, getToken } from 'firebase/messaging';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { app, db } from '../firebase';
+import { db } from '../firebase';
 import './NotificationPrompt.css';
 
-const VAPID_KEY = 'BHTfQK65hRYZf_cwX5y-YVAi-ksYocuz5AJ1uMBekiByzNm-DJ4_EOfQZ-lu9efE_OJ8ud_HEOK6cVhu2FPFubU';
+const PUBLIC_VAPID_KEY = 'BD9PD5DretSnu9QmJXjd0PCkc75q0x11B_KTpOHVn8STy9s77F3hVRNryrCC7E9J_dk-BDopj5IsKYbZbAgJqY4';
 const DISMISSED_KEY = 'finance_notif_dismissed';
 
-async function registerAndGetToken(uid) {
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+async function subscribeAndSave(uid) {
   const swReg = await navigator.serviceWorker.register(
     import.meta.env.BASE_URL + 'firebase-messaging-sw.js'
   );
-  // Inizializza messaging DOPO la registrazione del SW
-  const messaging = getMessaging(app);
-  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
-  if (token) {
-    await setDoc(doc(db, 'fcmTokens', token), { uid, createdAt: serverTimestamp() });
-  }
-  return token;
+  await navigator.serviceWorker.ready;
+
+  const subscription = await swReg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY),
+  });
+
+  const sub = subscription.toJSON();
+  const id = btoa(sub.endpoint).slice(-20);
+  await setDoc(doc(db, 'pushSubscriptions', id), {
+    uid,
+    endpoint: sub.endpoint,
+    keys: sub.keys,
+    createdAt: serverTimestamp(),
+  });
 }
 
 export default function NotificationPrompt({ user }) {
@@ -26,12 +40,10 @@ export default function NotificationPrompt({ user }) {
 
   useEffect(() => {
     if (!user) return;
-    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
     if (Notification.permission === 'granted') {
-      registerAndGetToken(user.uid).catch((err) =>
-        console.warn('Token FCM:', err)
-      );
+      subscribeAndSave(user.uid).catch((err) => console.warn('Push sub:', err));
       return;
     }
 
@@ -44,11 +56,9 @@ export default function NotificationPrompt({ user }) {
     setLoading(true);
     try {
       const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        await registerAndGetToken(user.uid);
-      }
+      if (permission === 'granted') await subscribeAndSave(user.uid);
     } catch (err) {
-      console.warn('Errore attivazione notifiche:', err);
+      console.warn('Errore notifiche:', err);
     } finally {
       setLoading(false);
       setVisible(false);

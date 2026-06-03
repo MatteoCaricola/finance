@@ -14,7 +14,22 @@ export default function NotificationPrompt({ user }) {
   useEffect(() => {
     if (!user || !VAPID_KEY) return;
     if (!('Notification' in window)) return;
-    if (Notification.permission !== 'default') return;
+
+    if (Notification.permission === 'granted') {
+      // Permesso già dato — salva il token silenziosamente
+      navigator.serviceWorker
+        .register(import.meta.env.BASE_URL + 'firebase-messaging-sw.js')
+        .then((swReg) => getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg }))
+        .then((token) => {
+          if (token) {
+            setDoc(doc(db, 'fcmTokens', token), { uid: user.uid, createdAt: serverTimestamp() });
+          }
+        })
+        .catch((err) => console.warn('Token FCM:', err));
+      return;
+    }
+
+    if (Notification.permission === 'denied') return;
     if (localStorage.getItem(DISMISSED_KEY)) return;
     setVisible(true);
   }, [user]);
@@ -24,7 +39,9 @@ export default function NotificationPrompt({ user }) {
     try {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
-        const swReg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+        const swReg = await navigator.serviceWorker.register(
+          import.meta.env.BASE_URL + 'firebase-messaging-sw.js'
+        );
         const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
         if (token) {
           await setDoc(doc(db, 'fcmTokens', token), {

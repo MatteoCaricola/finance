@@ -1,31 +1,37 @@
 import { useState, useEffect } from 'react';
-import { getToken } from 'firebase/messaging';
+import { getMessaging, getToken } from 'firebase/messaging';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { messaging, db } from '../firebase';
+import { app, db } from '../firebase';
 import './NotificationPrompt.css';
 
 const VAPID_KEY = 'BHTfQK65hRYZf_cwX5y-YVAi-ksYocuz5AJ1uMBekiByzNm-DJ4_EOfQZ-lu9efE_OJ8ud_HEOK6cVhu2FPFubU';
 const DISMISSED_KEY = 'finance_notif_dismissed';
+
+async function registerAndGetToken(uid) {
+  const swReg = await navigator.serviceWorker.register(
+    import.meta.env.BASE_URL + 'firebase-messaging-sw.js'
+  );
+  // Inizializza messaging DOPO la registrazione del SW
+  const messaging = getMessaging(app);
+  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
+  if (token) {
+    await setDoc(doc(db, 'fcmTokens', token), { uid, createdAt: serverTimestamp() });
+  }
+  return token;
+}
 
 export default function NotificationPrompt({ user }) {
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!user || !VAPID_KEY) return;
-    if (!('Notification' in window)) return;
+    if (!user) return;
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
 
     if (Notification.permission === 'granted') {
-      // Permesso già dato — salva il token silenziosamente
-      navigator.serviceWorker
-        .register(import.meta.env.BASE_URL + 'firebase-messaging-sw.js')
-        .then((swReg) => getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg }))
-        .then((token) => {
-          if (token) {
-            setDoc(doc(db, 'fcmTokens', token), { uid: user.uid, createdAt: serverTimestamp() });
-          }
-        })
-        .catch((err) => console.warn('Token FCM:', err));
+      registerAndGetToken(user.uid).catch((err) =>
+        console.warn('Token FCM:', err)
+      );
       return;
     }
 
@@ -39,16 +45,7 @@ export default function NotificationPrompt({ user }) {
     try {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
-        const swReg = await navigator.serviceWorker.register(
-          import.meta.env.BASE_URL + 'firebase-messaging-sw.js'
-        );
-        const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
-        if (token) {
-          await setDoc(doc(db, 'fcmTokens', token), {
-            uid: user.uid,
-            createdAt: serverTimestamp(),
-          });
-        }
+        await registerAndGetToken(user.uid);
       }
     } catch (err) {
       console.warn('Errore attivazione notifiche:', err);

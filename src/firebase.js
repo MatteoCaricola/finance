@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
-import { getMessaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyCR-ueePHA67APCT5crMqrDuRg3bMpZ-ug',
@@ -18,4 +17,4 @@ export const googleProvider = new GoogleAuthProvider();
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
-export const messaging = getMessaging(app);
+export { app };

@@ -8,8 +8,10 @@ import TransactionList from './TransactionList';
 import GraficiPage from './GraficiPage';
 import SalvadanaiPage from './SalvadanaiPage';
 import ImpostazioniPage from './ImpostazioniPage';
+import BudgetPanel from './BudgetPanel';
 import NotificationBell from './NotificationBell';
 import InstallButton from './InstallButton';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import './Dashboard.css';
 
 const fmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
@@ -25,11 +27,13 @@ const NAV = [
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  usePushNotifications(user);
   const [transactions, setTransactions] = useState([]);
   const [wallets, setWallets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoriesIncome, setCategoriesIncome] = useState(DEFAULT_INCOME);
   const [categoriesExpense, setCategoriesExpense] = useState(DEFAULT_EXPENSE);
+  const [budgets, setBudgets] = useState({});
   const [page, setPage] = useState('movimenti');
 
   const [accordionOpen, setAccordionOpen] = useState(false);
@@ -59,7 +63,11 @@ export default function Dashboard() {
         }
       }
     );
-    return () => { unsub1(); unsub2(); unsub3(); };
+    const unsub4 = onSnapshot(
+      doc(db, 'users', user.uid, 'settings', 'budgets'),
+      (snap) => { if (snap.exists()) setBudgets(snap.data()); }
+    );
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); };
   }, [user.uid]);
 
   const years = [...new Set(transactions.map((t) => t.date.split('-')[0]))].sort().reverse();
@@ -159,6 +167,8 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              <BudgetPanel transactions={transactions} budgets={budgets} />
+
               <div className="accordion">
                 <button
                   className={`accordion-trigger ${accordionOpen ? 'open' : ''}`}
@@ -221,7 +231,12 @@ export default function Dashboard() {
           )}
 
           {page === 'impostazioni' && (
-            <ImpostazioniPage categoriesIncome={categoriesIncome} categoriesExpense={categoriesExpense} />
+            <ImpostazioniPage
+              categoriesIncome={categoriesIncome}
+              categoriesExpense={categoriesExpense}
+              budgets={budgets}
+              onBudgetsChange={setBudgets}
+            />
           )}
 
           <footer className="dash-footer">v{__APP_VERSION__}</footer>

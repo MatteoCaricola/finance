@@ -4,13 +4,18 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import './ImpostazioniPage.css';
 
-export default function ImpostazioniPage({ categoriesIncome, categoriesExpense }) {
+const fmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
+
+export default function ImpostazioniPage({ categoriesIncome, categoriesExpense, budgets, onBudgetsChange }) {
   const { user } = useAuth();
   const [newIncome, setNewIncome] = useState('');
   const [newExpense, setNewExpense] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const save = async (income, expense) => {
+  const [newBudgetCat, setNewBudgetCat] = useState('');
+  const [newBudgetAmt, setNewBudgetAmt] = useState('');
+
+  const saveCategories = async (income, expense) => {
     setSaving(true);
     try {
       await setDoc(doc(db, 'users', user.uid, 'settings', 'categories'), { income, expense });
@@ -19,28 +24,50 @@ export default function ImpostazioniPage({ categoriesIncome, categoriesExpense }
     }
   };
 
+  const saveBudgets = async (updated) => {
+    await setDoc(doc(db, 'users', user.uid, 'settings', 'budgets'), updated);
+    onBudgetsChange?.(updated);
+  };
+
   const addCategory = async (type) => {
     const value = type === 'income' ? newIncome.trim() : newExpense.trim();
     if (!value) return;
     if (type === 'income') {
       if (categoriesIncome.includes(value)) return;
-      await save([...categoriesIncome, value], categoriesExpense);
+      await saveCategories([...categoriesIncome, value], categoriesExpense);
       setNewIncome('');
     } else {
       if (categoriesExpense.includes(value)) return;
-      await save(categoriesIncome, [...categoriesExpense, value]);
+      await saveCategories(categoriesIncome, [...categoriesExpense, value]);
       setNewExpense('');
     }
   };
 
   const removeCategory = (type, cat) => {
-    if (type === 'income') save(categoriesIncome.filter((c) => c !== cat), categoriesExpense);
-    else save(categoriesIncome, categoriesExpense.filter((c) => c !== cat));
+    if (type === 'income') saveCategories(categoriesIncome.filter((c) => c !== cat), categoriesExpense);
+    else saveCategories(categoriesIncome, categoriesExpense.filter((c) => c !== cat));
   };
 
   const handleKey = (e, type) => {
     if (e.key === 'Enter') { e.preventDefault(); addCategory(type); }
   };
+
+  const addBudget = () => {
+    if (!newBudgetCat || !newBudgetAmt) return;
+    const updated = { ...budgets, [newBudgetCat]: parseFloat(newBudgetAmt) };
+    saveBudgets(updated);
+    setNewBudgetCat('');
+    setNewBudgetAmt('');
+  };
+
+  const removeBudget = (cat) => {
+    const updated = { ...budgets };
+    delete updated[cat];
+    saveBudgets(updated);
+  };
+
+  const categoriesWithoutBudget = categoriesExpense.filter((c) => !(c in budgets));
+  const budgetEntries = Object.entries(budgets).filter(([, v]) => v > 0);
 
   return (
     <div className="impostazioni-page">
@@ -56,33 +83,14 @@ export default function ImpostazioniPage({ categoriesIncome, categoriesExpense }
             {categoriesIncome.map((cat) => (
               <div key={cat} className="cat-item">
                 <span>{cat}</span>
-                <button
-                  className="cat-remove"
-                  onClick={() => removeCategory('income', cat)}
-                  disabled={saving}
-                  title="Rimuovi"
-                >
-                  ×
-                </button>
+                <button className="cat-remove" onClick={() => removeCategory('income', cat)} disabled={saving} title="Rimuovi">×</button>
               </div>
             ))}
           </div>
           <div className="cat-add-row">
-            <input
-              type="text"
-              placeholder="Nuova categoria..."
-              value={newIncome}
-              onChange={(e) => setNewIncome(e.target.value)}
-              onKeyDown={(e) => handleKey(e, 'income')}
-              maxLength={30}
-            />
-            <button
-              className="btn-add income"
-              onClick={() => addCategory('income')}
-              disabled={saving || !newIncome.trim()}
-            >
-              Aggiungi
-            </button>
+            <input type="text" placeholder="Nuova categoria..." value={newIncome}
+              onChange={(e) => setNewIncome(e.target.value)} onKeyDown={(e) => handleKey(e, 'income')} maxLength={30} />
+            <button className="btn-add income" onClick={() => addCategory('income')} disabled={saving || !newIncome.trim()}>Aggiungi</button>
           </div>
         </div>
 
@@ -95,35 +103,57 @@ export default function ImpostazioniPage({ categoriesIncome, categoriesExpense }
             {categoriesExpense.map((cat) => (
               <div key={cat} className="cat-item">
                 <span>{cat}</span>
-                <button
-                  className="cat-remove"
-                  onClick={() => removeCategory('expense', cat)}
-                  disabled={saving}
-                  title="Rimuovi"
-                >
-                  ×
-                </button>
+                <button className="cat-remove" onClick={() => removeCategory('expense', cat)} disabled={saving} title="Rimuovi">×</button>
               </div>
             ))}
           </div>
           <div className="cat-add-row">
-            <input
-              type="text"
-              placeholder="Nuova categoria..."
-              value={newExpense}
-              onChange={(e) => setNewExpense(e.target.value)}
-              onKeyDown={(e) => handleKey(e, 'expense')}
-              maxLength={30}
-            />
-            <button
-              className="btn-add expense"
-              onClick={() => addCategory('expense')}
-              disabled={saving || !newExpense.trim()}
-            >
+            <input type="text" placeholder="Nuova categoria..." value={newExpense}
+              onChange={(e) => setNewExpense(e.target.value)} onKeyDown={(e) => handleKey(e, 'expense')} maxLength={30} />
+            <button className="btn-add expense" onClick={() => addCategory('expense')} disabled={saving || !newExpense.trim()}>Aggiungi</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="budget-section">
+        <h3>Budget mensile per categoria</h3>
+
+        {budgetEntries.length > 0 && (
+          <div className="budget-list">
+            {budgetEntries.map(([cat, limit]) => (
+              <div key={cat} className="budget-list-item">
+                <span className="budget-list-cat">{cat}</span>
+                <span className="budget-list-amt">{fmt(limit)} / mese</span>
+                <button className="budget-remove" onClick={() => removeBudget(cat)} title="Rimuovi">×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {categoriesWithoutBudget.length > 0 && (
+          <div className="budget-add-form">
+            <select value={newBudgetCat} onChange={(e) => setNewBudgetCat(e.target.value)}>
+              <option value="">Seleziona categoria...</option>
+              {categoriesWithoutBudget.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <div className="budget-input-wrap">
+              <span className="budget-euro">€</span>
+              <input
+                type="number" min="1" step="1" placeholder="Limite"
+                value={newBudgetAmt}
+                onChange={(e) => setNewBudgetAmt(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') addBudget(); }}
+              />
+            </div>
+            <button className="btn-add expense" onClick={addBudget} disabled={!newBudgetCat || !newBudgetAmt}>
               Aggiungi
             </button>
           </div>
-        </div>
+        )}
+
+        {budgetEntries.length === 0 && categoriesWithoutBudget.length === 0 && (
+          <p className="budget-hint">Tutte le categorie hanno già un budget impostato.</p>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,14 @@
 export const CHANGELOG = [
   {
+    version: '1.0.3',
+    date: '2026-06-03',
+    notes: [
+      'Obiettivi sui salvadanai — imposta un traguardo e segui l\'avanzamento con la barra di progresso (verde, gialla o con 🎉 a obiettivo raggiunto)',
+      'Budget mensile per categoria — in Impostazioni puoi assegnare un limite di spesa mensile a ogni categoria; in Movimenti vedi in tempo reale quanto hai già speso',
+      'Andamento saldo — nuovo grafico a linea in Grafici che mostra l\'evoluzione del tuo saldo negli ultimi 12 mesi',
+    ],
+  },
+  {
     version: '1.0.2',
     date: '2026-06-02',
     notes: [

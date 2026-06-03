@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell,
+  LineChart, Line, CartesianGrid, ReferenceLine,
 } from 'recharts';
 import './GraficiPage.css';
 
@@ -24,6 +25,24 @@ function buildMonthlyData(transactions) {
     if (t.type === 'expense') map[key].uscite  += t.amount;
   });
   return Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).slice(-6).map(([, v]) => v);
+}
+
+function buildBalanceData(transactions) {
+  const map = {};
+  transactions
+    .filter((t) => t.type === 'income' || t.type === 'expense')
+    .forEach((t) => {
+      const [y, m] = t.date.split('-');
+      const key = `${y}-${m}`;
+      if (!map[key]) map[key] = { label: `${MONTHS_SHORT[Number(m) - 1]} ${y}`, net: 0 };
+      map[key].net += t.type === 'income' ? t.amount : -t.amount;
+    });
+  const sorted = Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).slice(-12);
+  let cumulative = 0;
+  return sorted.map(([, v]) => {
+    cumulative += v.net;
+    return { label: v.label, saldo: Math.round(cumulative * 100) / 100 };
+  });
 }
 
 function buildCategoryData(transactions) {
@@ -107,6 +126,7 @@ export default function GraficiPage({ transactions, wallets = [] }) {
 
   const monthlyData  = buildMonthlyData(fundFiltered);
   const categoryData = buildCategoryData(fundFiltered);
+  const balanceData  = buildBalanceData(fundFiltered);
 
   return (
     <div className="grafici-page">
@@ -243,6 +263,33 @@ export default function GraficiPage({ transactions, wallets = [] }) {
             )
           }
         </div>
+      </div>
+
+      <div className="chart-card chart-card-full">
+        <h2>Andamento saldo (ultimi 12 mesi)</h2>
+        {balanceData.length === 0
+          ? <p className="chart-empty">Nessun dato disponibile.</p>
+          : (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={balanceData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}€`} />
+                <Tooltip formatter={(v) => fmt(v)} />
+                <ReferenceLine y={0} stroke="#e5e7eb" />
+                <Line
+                  type="monotone"
+                  dataKey="saldo"
+                  name="Saldo"
+                  stroke="#6366f1"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: '#6366f1' }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )
+        }
       </div>
 
       <div className="notes-card">

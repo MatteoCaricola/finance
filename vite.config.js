@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'fs'
+import { webcrypto } from 'crypto'
+if (!globalThis.crypto) globalThis.crypto = webcrypto
 
 const { version } = JSON.parse(readFileSync('./package.json', 'utf-8'))
 

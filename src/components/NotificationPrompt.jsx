@@ -4,7 +4,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { messaging, db } from '../firebase';
 import './NotificationPrompt.css';
 
-const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+const VAPID_KEY = 'BHTfQK65hRYZf_cwX5y-YVAi-ksYocuz5AJ1uMBekiByzNm-DJ4_EOfQZ-lu9efE_OJ8ud_HEOK6cVhu2FPFubU';
 const DISMISSED_KEY = 'finance_notif_dismissed';
 
 export default function NotificationPrompt({ user }) {

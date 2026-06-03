@@ -1,0 +1,44 @@
+.notif-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1e1b4b;
+  color: white;
+  padding: 12px 20px;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+
+.notif-prompt-icon { font-size: 18px; flex-shrink: 0; }
+
+.notif-prompt-text { flex: 1; min-width: 180px; }
+
+.notif-prompt-btn {
+  padding: 6px 16px;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.notif-prompt-btn:hover { opacity: 0.85; }
+.notif-prompt-btn:disabled { opacity: 0.5; cursor: default; }
+
+.notif-prompt-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.5);
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.notif-prompt-close:hover { color: white; }

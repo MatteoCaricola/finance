@@ -11,7 +11,7 @@ import ImpostazioniPage from './ImpostazioniPage';
 import BudgetPanel from './BudgetPanel';
 import NotificationBell from './NotificationBell';
 import InstallButton from './InstallButton';
-import { usePushNotifications } from '../hooks/usePushNotifications';
+import NotificationPrompt from './NotificationPrompt';
 import './Dashboard.css';
 
 const fmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
@@ -27,7 +27,6 @@ const NAV = [
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
-  usePushNotifications(user);
   const [transactions, setTransactions] = useState([]);
   const [wallets, setWallets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -145,6 +144,8 @@ export default function Dashboard() {
           ))}
         </ul>
       </nav>
+
+      <NotificationPrompt user={user} />
 
       <div className="dash-body">
         <Sidebar active={page} onChange={setPage} />

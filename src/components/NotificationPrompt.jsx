@@ -19,6 +19,9 @@ async function subscribeAndSave(uid) {
   );
   await navigator.serviceWorker.ready;
 
+  const existing = await swReg.pushManager.getSubscription();
+  if (existing) await existing.unsubscribe();
+
   const subscription = await swReg.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY),

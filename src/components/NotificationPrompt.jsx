@@ -14,10 +14,7 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 async function subscribeAndSave(uid) {
-  const swReg = await navigator.serviceWorker.register(
-    import.meta.env.BASE_URL + 'firebase-messaging-sw.js'
-  );
-  await navigator.serviceWorker.ready;
+  const swReg = await navigator.serviceWorker.ready;
 
   const existing = await swReg.pushManager.getSubscription();
   if (existing) await existing.unsubscribe();

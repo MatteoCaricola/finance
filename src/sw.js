@@ -8,7 +8,8 @@ cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
 self.addEventListener('push', (event) => {
-  const data = event.data?.json() ?? {};
+  let data = {};
+  try { data = event.data?.json() ?? {}; } catch { data = { title: event.data?.text() }; }
   event.waitUntil(
     self.registration.showNotification(data.title ?? 'Finance Tracker', {
       body: data.body ?? '',

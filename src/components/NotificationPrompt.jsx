@@ -1,38 +1,8 @@
 import { useState, useEffect } from 'react';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { subscribeAndSave } from '../utils/pushNotifications';
 import './NotificationPrompt.css';
 
-const PUBLIC_VAPID_KEY = 'BD9PD5DretSnu9QmJXjd0PCkc75q0x11B_KTpOHVn8STy9s77F3hVRNryrCC7E9J_dk-BDopj5IsKYbZbAgJqY4';
 const DISMISSED_KEY = 'finance_notif_dismissed';
-
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
-}
-
-async function subscribeAndSave(uid) {
-  const swReg = await navigator.serviceWorker.ready;
-
-  const existing = await swReg.pushManager.getSubscription();
-  if (existing) await existing.unsubscribe();
-
-  const subscription = await swReg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY),
-  });
-
-  const sub = subscription.toJSON();
-  const id = btoa(sub.endpoint).slice(-20);
-  await setDoc(doc(db, 'pushSubscriptions', id), {
-    uid,
-    endpoint: sub.endpoint,
-    keys: sub.keys,
-    createdAt: serverTimestamp(),
-  });
-}
 
 export default function NotificationPrompt({ user }) {
   const [visible, setVisible] = useState(false);

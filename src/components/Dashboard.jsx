@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
+import { useEffect, useRef, useState } from 'react';
+import { collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from './Sidebar';
@@ -35,6 +35,10 @@ export default function Dashboard() {
   const [budgets, setBudgets] = useState({});
   const [page, setPage] = useState('movimenti');
 
+  const [recurring, setRecurring] = useState([]);
+  const [recurringLoading, setRecurringLoading] = useState(true);
+  const recurringChecked = useRef(false);
+
   const [accordionOpen, setAccordionOpen] = useState(false);
   const [burgerOpen, setBurgerOpen] = useState(false);
   const [filterMonth, setFilterMonth] = useState('');
@@ -66,8 +70,63 @@ export default function Dashboard() {
       doc(db, 'users', user.uid, 'settings', 'budgets'),
       (snap) => { if (snap.exists()) setBudgets(snap.data()); }
     );
-    return () => { unsub1(); unsub2(); unsub3(); unsub4(); };
+    const unsub5 = onSnapshot(
+      query(collection(db, 'users', user.uid, 'recurring'), orderBy('createdAt')),
+      (snap) => { setRecurring(snap.docs.map((d) => ({ id: d.id, ...d.data() }))); setRecurringLoading(false); }
+    );
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); };
   }, [user.uid]);
+
+  useEffect(() => {
+    if (recurringLoading || recurringChecked.current || recurring.length === 0) return;
+    recurringChecked.current = true;
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const currentMonth = todayStr.slice(0, 7);
+    const currentDay = now.getDate();
+    const todayDow = now.getDay() === 0 ? 7 : now.getDay();
+
+    for (const r of recurring) {
+      const freq = r.frequency ?? 'monthly';
+
+      if (freq === 'daily') {
+        if (r.lastAddedDate === todayStr) continue;
+        addDoc(collection(db, 'users', user.uid, 'transactions'), {
+          type: r.type, amount: r.amount, category: r.category,
+          description: r.description || '', date: todayStr,
+          createdAt: serverTimestamp(), recurringId: r.id,
+        });
+        updateDoc(doc(db, 'users', user.uid, 'recurring', r.id), { lastAddedDate: todayStr });
+
+      } else if (freq === 'weekly') {
+        if (todayDow !== r.dayOfWeek) continue;
+        if (r.lastAddedDate === todayStr) continue;
+        addDoc(collection(db, 'users', user.uid, 'transactions'), {
+          type: r.type, amount: r.amount, category: r.category,
+          description: r.description || '', date: todayStr,
+          createdAt: serverTimestamp(), recurringId: r.id,
+        });
+        updateDoc(doc(db, 'users', user.uid, 'recurring', r.id), { lastAddedDate: todayStr });
+
+      } else {
+        if (r.lastAddedMonth === currentMonth) continue;
+        if (currentDay < r.dayOfMonth) continue;
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const day = String(Math.min(r.dayOfMonth, lastDay)).padStart(2, '0');
+        addDoc(collection(db, 'users', user.uid, 'transactions'), {
+          type: r.type, amount: r.amount, category: r.category,
+          description: r.description || '', date: `${currentMonth}-${day}`,
+          createdAt: serverTimestamp(), recurringId: r.id,
+        });
+        updateDoc(doc(db, 'users', user.uid, 'recurring', r.id), { lastAddedMonth: currentMonth });
+      }
+    }
+  }, [recurring, recurringLoading, user.uid]);
+
+  const handleDeleteRecurring = async (id) => {
+    await deleteDoc(doc(db, 'users', user.uid, 'recurring', id));
+  };
 
   const years = [...new Set(transactions.map((t) => t.date.split('-')[0]))].sort().reverse();
 
@@ -237,6 +296,8 @@ export default function Dashboard() {
               categoriesExpense={categoriesExpense}
               budgets={budgets}
               onBudgetsChange={setBudgets}
+              recurring={recurring}
+              onDeleteRecurring={handleDeleteRecurring}
             />
           )}
 

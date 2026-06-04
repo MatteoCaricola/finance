@@ -1,5 +1,13 @@
 export const CHANGELOG = [
   {
+    version: '1.0.4',
+    date: '2026-06-04',
+    notes: [
+      'Transazioni ricorrenti — imposta una transazione come ricorrente (ogni giorno, ogni settimana su un giorno specifico, o ogni mese in una data precisa) e viene aggiunta automaticamente all\'apertura dell\'app',
+      'Gestione notifiche — abilita o disabilita le notifiche push direttamente dalla sezione Impostazioni',
+    ],
+  },
+  {
     version: '1.0.3',
     date: '2026-06-03',
     notes: [

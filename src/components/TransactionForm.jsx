@@ -35,6 +35,10 @@ function WalletInfo() {
 }
 
 const today = () => new Date().toISOString().split('T')[0];
+const todayDayOfWeek = () => { const d = new Date().getDay(); return d === 0 ? 7 : d; };
+const todayDayOfMonth = () => new Date().getDate();
+
+const DAYS_OF_WEEK = ['', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
 export default function TransactionForm({ onAdded, wallets = [], categoriesIncome = [], categoriesExpense = [] }) {
   const { user } = useAuth();
@@ -47,6 +51,10 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
   const [isMovement, setIsMovement] = useState(false);
   const [walletId, setWalletId] = useState('');
   const [fromWalletId, setFromWalletId] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState('monthly');
+  const [recurringDayOfWeek, setRecurringDayOfWeek] = useState(todayDayOfWeek);
+  const [recurringDayOfMonth, setRecurringDayOfMonth] = useState(todayDayOfMonth);
 
   const categories = type === 'income' ? categoriesIncome : categoriesExpense;
   const isTransfer = isMovement && walletId && fromWalletId;
@@ -59,7 +67,13 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
 
   const handleMovementToggle = (e) => {
     setIsMovement(e.target.checked);
-    if (!e.target.checked) { setWalletId(''); setFromWalletId(''); }
+    if (e.target.checked) { setIsRecurring(false); }
+    else { setWalletId(''); setFromWalletId(''); }
+  };
+
+  const handleRecurringToggle = (e) => {
+    setIsRecurring(e.target.checked);
+    if (e.target.checked) { setIsMovement(false); setWalletId(''); setFromWalletId(''); }
   };
 
   const handleSubmit = async (e) => {
@@ -88,6 +102,22 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
         data.fromWalletName = fromWallet?.name ?? '';
       }
       await addDoc(collection(db, 'users', user.uid, 'transactions'), data);
+
+      if (isRecurring) {
+        await addDoc(collection(db, 'users', user.uid, 'recurring'), {
+          type,
+          amount: parseFloat(amount),
+          category,
+          description,
+          frequency: recurringFrequency,
+          dayOfWeek: recurringFrequency === 'weekly' ? recurringDayOfWeek : null,
+          dayOfMonth: recurringFrequency === 'monthly' ? recurringDayOfMonth : null,
+          lastAddedDate: recurringFrequency !== 'monthly' ? date : null,
+          lastAddedMonth: recurringFrequency === 'monthly' ? date.slice(0, 7) : null,
+          createdAt: serverTimestamp(),
+        });
+      }
+
       setAmount('');
       setDescription('');
       setCategory('');
@@ -95,6 +125,10 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
       setIsMovement(false);
       setWalletId('');
       setFromWalletId('');
+      setIsRecurring(false);
+      setRecurringFrequency('monthly');
+      setRecurringDayOfWeek(todayDayOfWeek());
+      setRecurringDayOfMonth(todayDayOfMonth());
       onAdded?.();
     } finally {
       setLoading(false);
@@ -121,6 +155,65 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
             Entrata
           </button>
         </div>
+
+        {!isMovement && (
+          <div className="recurring-section">
+            <label className="checkbox-label">
+              <input type="checkbox" checked={isRecurring} onChange={handleRecurringToggle} />
+              Ricorrente
+            </label>
+
+            {isRecurring && (
+              <div className="recurring-options">
+                <div className="cadenza-row">
+                  <span className="cadenza-label">Cadenza</span>
+                  <select
+                    className="cadenza-select"
+                    value={recurringFrequency}
+                    onChange={(e) => setRecurringFrequency(e.target.value)}
+                  >
+                    <option value="daily">Ogni giorno</option>
+                    <option value="weekly">Ogni settimana</option>
+                    <option value="monthly">Ogni mese</option>
+                  </select>
+                </div>
+
+                {recurringFrequency === 'weekly' && (
+                  <div className="cadenza-row">
+                    <span className="cadenza-label">Giorno</span>
+                    <select
+                      className="cadenza-select"
+                      value={recurringDayOfWeek}
+                      onChange={(e) => setRecurringDayOfWeek(Number(e.target.value))}
+                    >
+                      {DAYS_OF_WEEK.slice(1).map((name, i) => (
+                        <option key={i + 1} value={i + 1}>{name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {recurringFrequency === 'monthly' && (
+                  <div className="day-picker-wrap">
+                    <span className="cadenza-label">Giorno del mese</span>
+                    <div className="day-picker">
+                      {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          className={`day-btn${recurringDayOfMonth === d ? ' active' : ''}`}
+                          onClick={() => setRecurringDayOfMonth(d)}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="form-row">
           <div className="form-group">

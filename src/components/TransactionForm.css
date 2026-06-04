@@ -234,3 +234,83 @@
 }
 
 .cat-info-close:hover { color: white; }
+
+.recurring-section {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background: #f5f3ff;
+  border-radius: 8px;
+  border: 1.5px solid #e0e7ff;
+}
+
+.recurring-options {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cadenza-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cadenza-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  min-width: 110px;
+}
+
+.cadenza-select {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1.5px solid #c4b5fd;
+  border-radius: 7px;
+  font-size: 13px;
+  color: #111827;
+  background: white;
+  outline: none;
+  cursor: pointer;
+}
+
+.cadenza-select:focus {
+  border-color: #6366f1;
+}
+
+.day-picker-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.day-picker {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.day-btn {
+  padding: 5px 0;
+  border: 1.5px solid #e0e7ff;
+  border-radius: 5px;
+  background: white;
+  font-size: 11px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.day-btn:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.day-btn.active {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: white;
+}

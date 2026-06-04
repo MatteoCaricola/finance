@@ -1,12 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { getPushStatus, subscribeAndSave, unsubscribeAndRemove } from '../utils/pushNotifications';
 import './ImpostazioniPage.css';
 
 const fmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
 
-export default function ImpostazioniPage({ categoriesIncome, categoriesExpense, budgets, onBudgetsChange }) {
+const fmtAmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
+const DAYS_OF_WEEK = ['', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
+const freqLabel = (r) => {
+  if (r.frequency === 'daily') return 'ogni giorno';
+  if (r.frequency === 'weekly') return `ogni ${DAYS_OF_WEEK[r.dayOfWeek] ?? ''}`;
+  return `giorno ${r.dayOfMonth} del mese`;
+};
+
+export default function ImpostazioniPage({ categoriesIncome, categoriesExpense, budgets, onBudgetsChange, recurring = [], onDeleteRecurring }) {
   const { user } = useAuth();
   const [newIncome, setNewIncome] = useState('');
   const [newExpense, setNewExpense] = useState('');
@@ -14,6 +23,12 @@ export default function ImpostazioniPage({ categoriesIncome, categoriesExpense, 
 
   const [newBudgetCat, setNewBudgetCat] = useState('');
   const [newBudgetAmt, setNewBudgetAmt] = useState('');
+  const [pushStatus, setPushStatus] = useState(null);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  useEffect(() => {
+    getPushStatus().then(setPushStatus);
+  }, []);
 
   const saveCategories = async (income, expense) => {
     setSaving(true);
@@ -153,6 +168,71 @@ export default function ImpostazioniPage({ categoriesIncome, categoriesExpense, 
 
         {budgetEntries.length === 0 && categoriesWithoutBudget.length === 0 && (
           <p className="budget-hint">Tutte le categorie hanno già un budget impostato.</p>
+        )}
+      </div>
+
+      <div className="budget-section">
+        <h3>Notifiche</h3>
+        {pushStatus === 'unsupported' && (
+          <p className="budget-hint">Le notifiche push non sono supportate da questo browser.</p>
+        )}
+        {pushStatus === 'denied' && (
+          <p className="budget-hint">Le notifiche sono bloccate dal browser. Modificale dalle impostazioni del browser.</p>
+        )}
+        {(pushStatus === 'enabled' || pushStatus === 'disabled' || pushStatus === 'default') && (
+          <div className="push-toggle-row">
+            <div className="push-status">
+              <span className={`push-dot ${pushStatus === 'enabled' ? 'on' : 'off'}`} />
+              <span>{pushStatus === 'enabled' ? 'Notifiche abilitate' : 'Notifiche disabilitate'}</span>
+            </div>
+            <button
+              className={`btn-push-toggle ${pushStatus === 'enabled' ? 'disable' : 'enable'}`}
+              disabled={pushLoading}
+              onClick={async () => {
+                setPushLoading(true);
+                try {
+                  if (pushStatus === 'enabled') {
+                    await unsubscribeAndRemove();
+                    setPushStatus('disabled');
+                  } else {
+                    const permission = Notification.permission === 'granted'
+                      ? 'granted'
+                      : await Notification.requestPermission();
+                    if (permission === 'granted') {
+                      await subscribeAndSave(user.uid);
+                      setPushStatus('enabled');
+                    } else {
+                      setPushStatus(permission === 'denied' ? 'denied' : 'default');
+                    }
+                  }
+                } catch (err) {
+                  console.warn('Push toggle:', err);
+                } finally {
+                  setPushLoading(false);
+                }
+              }}
+            >
+              {pushLoading ? '...' : pushStatus === 'enabled' ? 'Disabilita' : 'Abilita'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="budget-section">
+        <h3>Transazioni ricorrenti</h3>
+        {recurring.length === 0 ? (
+          <p className="budget-hint">Nessuna transazione ricorrente. Aggiungine una spuntando "Ricorrente ogni mese" nel form.</p>
+        ) : (
+          <div className="budget-list">
+            {recurring.map((r) => (
+              <div key={r.id} className="budget-list-item">
+                <span className={`tx-dot ${r.type}`} style={{ flexShrink: 0 }} />
+                <span className="budget-list-cat">{r.category}{r.description ? ` — ${r.description}` : ''}</span>
+                <span className="budget-list-amt">{fmtAmt(r.amount)} · {freqLabel(r)}</span>
+                <button className="budget-remove" onClick={() => onDeleteRecurring?.(r.id)} title="Elimina">×</button>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

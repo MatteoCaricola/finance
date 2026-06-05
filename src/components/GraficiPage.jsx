@@ -105,6 +105,22 @@ export default function GraficiPage({ transactions, wallets = [] }) {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterSearch, setFilterSearch]     = useState('');
 
+  // Confronto periodi
+  const now = new Date();
+  const curYear = String(now.getFullYear());
+  const curMonth = String(now.getMonth() + 1).padStart(2, '0');
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevYear = String(prevDate.getFullYear());
+  const prevMonth = String(prevDate.getMonth() + 1).padStart(2, '0');
+
+  const [periodA, setPeriodA] = useState({
+    fromYear: prevYear, fromMonth: prevMonth, toYear: prevYear, toMonth: prevMonth,
+  });
+  const [periodB, setPeriodB] = useState({
+    fromYear: curYear, fromMonth: curMonth, toYear: curYear, toMonth: curMonth,
+  });
+  const [confrontoChart, setConfrontoChart] = useState('bar');
+
   useEffect(() => {
     getDoc(doc(db, 'users', user.uid, 'data', 'notes')).then((snap) => {
       if (snap.exists()) setNotes(snap.data().content || '');
@@ -165,6 +181,31 @@ export default function GraficiPage({ transactions, wallets = [] }) {
   const monthlyData  = buildMonthlyData(fundFiltered);
   const categoryData = buildCategoryData(fundFiltered);
   const balanceData  = buildBalanceData(fundFiltered);
+
+  // Confronto — validazione e dati
+  const confrontoAValid = !!(periodA.fromYear && periodA.fromMonth && periodA.toYear && periodA.toMonth
+    && `${periodA.fromYear}-${periodA.fromMonth}` <= `${periodA.toYear}-${periodA.toMonth}`);
+  const confrontoBValid = !!(periodB.fromYear && periodB.fromMonth && periodB.toYear && periodB.toMonth
+    && `${periodB.fromYear}-${periodB.fromMonth}` <= `${periodB.toYear}-${periodB.toMonth}`);
+
+  const dataA = confrontoAValid
+    ? buildPeriodData(transactions, `${periodA.fromYear}-${periodA.fromMonth}`, `${periodA.toYear}-${periodA.toMonth}`)
+    : { income: 0, expense: 0, byCategory: {} };
+  const dataB = confrontoBValid
+    ? buildPeriodData(transactions, `${periodB.fromYear}-${periodB.fromMonth}`, `${periodB.toYear}-${periodB.toMonth}`)
+    : { income: 0, expense: 0, byCategory: {} };
+
+  const labelA = confrontoAValid ? periodLabel(periodA.fromYear, periodA.fromMonth, periodA.toYear, periodA.toMonth) : '—';
+  const labelB = confrontoBValid ? periodLabel(periodB.fromYear, periodB.fromMonth, periodB.toYear, periodB.toMonth) : '—';
+
+  const deltaExpense = dataB.expense - dataA.expense;
+  const deltaExpensePct = dataA.expense > 0 ? Math.round((deltaExpense / dataA.expense) * 100) : 0;
+  const deltaIncome = dataB.income - dataA.income;
+  const deltaIncomePct = dataA.income > 0 ? Math.round((deltaIncome / dataA.income) * 100) : 0;
+
+  const barData = (confrontoAValid && confrontoBValid) ? buildComparisonBarData(dataA, dataB) : [];
+  const pieDataA = confrontoAValid ? buildPiePeriodData(dataA.byCategory) : [];
+  const pieDataB = confrontoBValid ? buildPiePeriodData(dataB.byCategory) : [];
 
   return (
     <div className="grafici-page">
@@ -343,6 +384,184 @@ export default function GraficiPage({ transactions, wallets = [] }) {
           value={notes}
           onChange={handleNotesChange}
         />
+      </div>
+
+      <div className="chart-card chart-card-full">
+        <h2>Confronto periodi</h2>
+
+        <div className="confronto-selectors">
+          <div className="confronto-period-row">
+            <span className="confronto-label a">A</span>
+            <span className="confronto-from-label">Da</span>
+            <select value={periodA.fromMonth} onChange={(e) => setPeriodA((p) => ({ ...p, fromMonth: e.target.value }))}>
+              <option value="">Mese</option>
+              {MONTHS.map((m, i) => <option key={i} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
+            </select>
+            <select value={periodA.fromYear} onChange={(e) => setPeriodA((p) => ({ ...p, fromYear: e.target.value }))}>
+              <option value="">Anno</option>
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <span className="confronto-to-label">a</span>
+            <select value={periodA.toMonth} onChange={(e) => setPeriodA((p) => ({ ...p, toMonth: e.target.value }))}>
+              <option value="">Mese</option>
+              {MONTHS.map((m, i) => <option key={i} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
+            </select>
+            <select value={periodA.toYear} onChange={(e) => setPeriodA((p) => ({ ...p, toYear: e.target.value }))}>
+              <option value="">Anno</option>
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+
+          <div className="confronto-vs">VS</div>
+
+          <div className="confronto-period-row">
+            <span className="confronto-label b">B</span>
+            <span className="confronto-from-label">Da</span>
+            <select value={periodB.fromMonth} onChange={(e) => setPeriodB((p) => ({ ...p, fromMonth: e.target.value }))}>
+              <option value="">Mese</option>
+              {MONTHS.map((m, i) => <option key={i} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
+            </select>
+            <select value={periodB.fromYear} onChange={(e) => setPeriodB((p) => ({ ...p, fromYear: e.target.value }))}>
+              <option value="">Anno</option>
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <span className="confronto-to-label">a</span>
+            <select value={periodB.toMonth} onChange={(e) => setPeriodB((p) => ({ ...p, toMonth: e.target.value }))}>
+              <option value="">Mese</option>
+              {MONTHS.map((m, i) => <option key={i} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
+            </select>
+            <select value={periodB.toYear} onChange={(e) => setPeriodB((p) => ({ ...p, toYear: e.target.value }))}>
+              <option value="">Anno</option>
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {confrontoAValid && confrontoBValid ? (
+          <>
+            <div className="confronto-cards">
+              <div className="confronto-card a">
+                <div className="cc-label a">{labelA}</div>
+                <div className="cc-row"><span>Entrate</span><strong className="cc-income">{fmt(dataA.income)}</strong></div>
+                <div className="cc-row"><span>Uscite</span><strong className="cc-expense">{fmt(dataA.expense)}</strong></div>
+                <div className="cc-row cc-balance">
+                  <span>Saldo</span>
+                  <strong style={{ color: dataA.income - dataA.expense >= 0 ? '#10b981' : '#ef4444' }}>
+                    {fmt(dataA.income - dataA.expense)}
+                  </strong>
+                </div>
+              </div>
+              <div className="confronto-card b">
+                <div className="cc-label b">{labelB}</div>
+                <div className="cc-row"><span>Entrate</span><strong className="cc-income">{fmt(dataB.income)}</strong></div>
+                <div className="cc-row"><span>Uscite</span><strong className="cc-expense">{fmt(dataB.expense)}</strong></div>
+                <div className="cc-row cc-balance">
+                  <span>Saldo</span>
+                  <strong style={{ color: dataB.income - dataB.expense >= 0 ? '#10b981' : '#ef4444' }}>
+                    {fmt(dataB.income - dataB.expense)}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {(dataA.expense > 0 || dataB.expense > 0) && (
+              <div className="confronto-delta">
+                <span>Uscite:</span>
+                <span className={deltaExpense >= 0 ? 'delta-up' : 'delta-down'}>
+                  {deltaExpense >= 0 ? '+' : ''}{fmt(deltaExpense)}
+                  {dataA.expense > 0 && ` (${deltaExpense >= 0 ? '+' : ''}${deltaExpensePct}%)`}
+                </span>
+                <span className="confronto-delta-sep">·</span>
+                <span>Entrate:</span>
+                <span className={deltaIncome >= 0 ? 'delta-down' : 'delta-up'}>
+                  {deltaIncome >= 0 ? '+' : ''}{fmt(deltaIncome)}
+                  {dataA.income > 0 && ` (${deltaIncome >= 0 ? '+' : ''}${deltaIncomePct}%)`}
+                </span>
+              </div>
+            )}
+
+            {(barData.length > 0 || pieDataA.length > 0) && (
+              <>
+                <div className="confronto-chart-toggle">
+                  <button
+                    className={`ctoggle-btn ${confrontoChart === 'bar' ? 'active' : ''}`}
+                    onClick={() => setConfrontoChart('bar')}
+                    title="Barre raggruppate"
+                  >▦</button>
+                  <button
+                    className={`ctoggle-btn ${confrontoChart === 'pie' ? 'active' : ''}`}
+                    onClick={() => setConfrontoChart('pie')}
+                    title="Torte affiancate"
+                  >◉</button>
+                </div>
+
+                {confrontoChart === 'bar' && (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={barData} barGap={4}>
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}€`} />
+                      <Tooltip formatter={(v) => fmt(v)} />
+                      <Legend />
+                      <Bar dataKey="A" name={labelA} fill="#6366f1" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="B" name={labelB} fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+
+                {confrontoChart === 'pie' && (
+                  <div className="confronto-pies">
+                    <div className="confronto-pie-wrap">
+                      <div className="confronto-pie-title a">{labelA}</div>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <PieChart>
+                          <Pie data={pieDataA} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={false}>
+                            {pieDataA.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip formatter={(v) => fmt(v)} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <ul className="pie-legend">
+                        {pieDataA.map((d, i) => (
+                          <li key={d.name}>
+                            <span className="pie-dot" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                            <span className="pie-label">{d.name}</span>
+                            <span className="pie-value">{fmt(d.value)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="confronto-pie-wrap">
+                      <div className="confronto-pie-title b">{labelB}</div>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <PieChart>
+                          <Pie data={pieDataB} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={false}>
+                            {pieDataB.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip formatter={(v) => fmt(v)} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <ul className="pie-legend">
+                        {pieDataB.map((d, i) => (
+                          <li key={d.name}>
+                            <span className="pie-dot" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                            <span className="pie-label">{d.name}</span>
+                            <span className="pie-value">{fmt(d.value)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {barData.length === 0 && pieDataA.length === 0 && (
+              <p className="chart-empty">Nessuna spesa nei periodi selezionati.</p>
+            )}
+          </>
+        ) : (
+          <p className="chart-empty">Seleziona entrambi i periodi per visualizzare il confronto.</p>
+        )}
       </div>
     </div>
   );

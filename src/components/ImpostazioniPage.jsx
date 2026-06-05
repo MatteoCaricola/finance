@@ -86,7 +86,7 @@ export default function ImpostazioniPage({
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
-  useEffect(() => { getPushStatus().then(setPushStatus); }, []);
+  useEffect(() => { getPushStatus().then(setPushStatus).catch(() => setPushStatus('disabled')); }, []);
 
   // --- Categorie ---
   const saveCategories = async (income, expense) => {
@@ -334,6 +334,7 @@ export default function ImpostazioniPage({
                       }
                     } catch (err) {
                       console.warn('Push toggle:', err);
+                      getPushStatus().then(setPushStatus).catch(() => setPushStatus('disabled'));
                     } finally {
                       setPushLoading(false);
                     }

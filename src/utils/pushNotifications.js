@@ -43,7 +43,11 @@ export async function getPushStatus() {
     return 'unsupported';
   if (Notification.permission === 'denied') return 'denied';
   if (Notification.permission === 'default') return 'default';
-  const swReg = await navigator.serviceWorker.ready;
-  const sub = await swReg.pushManager.getSubscription();
-  return sub ? 'enabled' : 'disabled';
+  try {
+    const swReg = await navigator.serviceWorker.ready;
+    const sub = await swReg.pushManager.getSubscription();
+    return sub ? 'enabled' : 'disabled';
+  } catch {
+    return 'disabled';
+  }
 }

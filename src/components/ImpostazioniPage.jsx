@@ -78,6 +78,7 @@ export default function ImpostazioniPage({
   // Ricorrenti edit
   const [editingRecurring, setEditingRecurring] = useState(null);
   const [editRec, setEditRec] = useState({});
+  const [savingRec, setSavingRec] = useState(false);
 
   // DnD sensors (PointerSensor per desktop, TouchSensor per mobile)
   const sensors = useSensors(
@@ -126,14 +127,14 @@ export default function ImpostazioniPage({
   };
 
   const handleDragEndIncome = ({ active, over }) => {
-    if (!over || active.id === over.id) return;
+    if (saving || !over || active.id === over.id) return;
     const oldIndex = categoriesIncome.indexOf(active.id);
     const newIndex = categoriesIncome.indexOf(over.id);
     saveCategories(arrayMove(categoriesIncome, oldIndex, newIndex), categoriesExpense);
   };
 
   const handleDragEndExpense = ({ active, over }) => {
-    if (!over || active.id === over.id) return;
+    if (saving || !over || active.id === over.id) return;
     const oldIndex = categoriesExpense.indexOf(active.id);
     const newIndex = categoriesExpense.indexOf(over.id);
     saveCategories(categoriesIncome, arrayMove(categoriesExpense, oldIndex, newIndex));
@@ -172,15 +173,22 @@ export default function ImpostazioniPage({
   };
 
   const saveEditRecurring = async (id) => {
-    await updateDoc(doc(db, 'users', user.uid, 'recurring', id), {
-      amount: parseFloat(editRec.amount),
-      category: editRec.category,
-      description: editRec.description,
-      frequency: editRec.frequency,
-      ...(editRec.frequency === 'monthly' ? { dayOfMonth: parseInt(editRec.dayOfMonth) } : {}),
-      ...(editRec.frequency === 'weekly' ? { dayOfWeek: parseInt(editRec.dayOfWeek) } : {}),
-    });
-    setEditingRecurring(null);
+    setSavingRec(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'recurring', id), {
+        amount: parseFloat(editRec.amount),
+        category: editRec.category,
+        description: editRec.description,
+        frequency: editRec.frequency,
+        ...(editRec.frequency === 'monthly' ? { dayOfMonth: parseInt(editRec.dayOfMonth, 10) } : {}),
+        ...(editRec.frequency === 'weekly' ? { dayOfWeek: parseInt(editRec.dayOfWeek, 10) } : {}),
+        lastAddedDate: null,
+        lastAddedMonth: null,
+      });
+      setEditingRecurring(null);
+    } finally {
+      setSavingRec(false);
+    }
   };
 
   // --- Computed ---
@@ -419,7 +427,9 @@ export default function ImpostazioniPage({
                         )}
                         <div className="rec-edit-actions">
                           <button className="btn-cancel-rec" onClick={() => setEditingRecurring(null)}>Annulla</button>
-                          <button className="btn-save-rec" onClick={() => saveEditRecurring(r.id)}>Salva</button>
+                          <button className="btn-save-rec" onClick={() => saveEditRecurring(r.id)} disabled={savingRec}>
+                            {savingRec ? '...' : 'Salva'}
+                          </button>
                         </div>
                       </div>
                     )}

@@ -300,6 +300,7 @@ export default function ImpostazioniPage({
         </button>
         {isOpen('notifiche') && (
           <div className="acc-body">
+            {pushStatus === null && <p className="budget-hint">Verifica stato notifiche...</p>}
             {pushStatus === 'unsupported' && (
               <p className="budget-hint">Le notifiche push non sono supportate da questo browser.</p>
             )}

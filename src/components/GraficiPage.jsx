@@ -106,18 +106,17 @@ export default function GraficiPage({ transactions, wallets = [] }) {
   const [filterSearch, setFilterSearch]     = useState('');
 
   // Confronto periodi
-  const now = new Date();
-  const curYear = String(now.getFullYear());
-  const curMonth = String(now.getMonth() + 1).padStart(2, '0');
-  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevYear = String(prevDate.getFullYear());
-  const prevMonth = String(prevDate.getMonth() + 1).padStart(2, '0');
-
-  const [periodA, setPeriodA] = useState({
-    fromYear: prevYear, fromMonth: prevMonth, toYear: prevYear, toMonth: prevMonth,
+  const [periodA, setPeriodA] = useState(() => {
+    const d = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+    const y = String(d.getFullYear());
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return { fromYear: y, fromMonth: m, toYear: y, toMonth: m };
   });
-  const [periodB, setPeriodB] = useState({
-    fromYear: curYear, fromMonth: curMonth, toYear: curYear, toMonth: curMonth,
+  const [periodB, setPeriodB] = useState(() => {
+    const now = new Date();
+    const y = String(now.getFullYear());
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    return { fromYear: y, fromMonth: m, toYear: y, toMonth: m };
   });
   const [confrontoChart, setConfrontoChart] = useState('bar');
 
@@ -189,10 +188,10 @@ export default function GraficiPage({ transactions, wallets = [] }) {
     && `${periodB.fromYear}-${periodB.fromMonth}` <= `${periodB.toYear}-${periodB.toMonth}`);
 
   const dataA = confrontoAValid
-    ? buildPeriodData(transactions, `${periodA.fromYear}-${periodA.fromMonth}`, `${periodA.toYear}-${periodA.toMonth}`)
+    ? buildPeriodData(fundFiltered, `${periodA.fromYear}-${periodA.fromMonth}`, `${periodA.toYear}-${periodA.toMonth}`)
     : { income: 0, expense: 0, byCategory: {} };
   const dataB = confrontoBValid
-    ? buildPeriodData(transactions, `${periodB.fromYear}-${periodB.fromMonth}`, `${periodB.toYear}-${periodB.toMonth}`)
+    ? buildPeriodData(fundFiltered, `${periodB.fromYear}-${periodB.fromMonth}`, `${periodB.toYear}-${periodB.toMonth}`)
     : { income: 0, expense: 0, byCategory: {} };
 
   const labelA = confrontoAValid ? periodLabel(periodA.fromYear, periodA.fromMonth, periodA.toYear, periodA.toMonth) : '—';
@@ -464,7 +463,7 @@ export default function GraficiPage({ transactions, wallets = [] }) {
               </div>
             </div>
 
-            {(dataA.expense > 0 || dataB.expense > 0) && (
+            {(dataA.expense > 0 || dataB.expense > 0 || dataA.income > 0 || dataB.income > 0) && (
               <div className="confronto-delta">
                 <span>Uscite:</span>
                 <span className={deltaExpense >= 0 ? 'delta-up' : 'delta-down'}>

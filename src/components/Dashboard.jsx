@@ -298,6 +298,7 @@ export default function Dashboard() {
               onBudgetsChange={setBudgets}
               recurring={recurring}
               onDeleteRecurring={handleDeleteRecurring}
+              transactions={transactions}
             />
           )}
 

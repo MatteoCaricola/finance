@@ -15,7 +15,7 @@ const freqLabel = (r) => {
   return `giorno ${r.dayOfMonth} del mese`;
 };
 
-export default function ImpostazioniPage({ categoriesIncome, categoriesExpense, budgets, onBudgetsChange, recurring = [], onDeleteRecurring }) {
+export default function ImpostazioniPage({ categoriesIncome, categoriesExpense, budgets, onBudgetsChange, recurring = [], onDeleteRecurring, transactions = [] }) {
   const { user } = useAuth();
   const [newIncome, setNewIncome] = useState('');
   const [newExpense, setNewExpense] = useState('');

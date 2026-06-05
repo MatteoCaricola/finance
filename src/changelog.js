@@ -1,5 +1,15 @@
 export const CHANGELOG = [
   {
+    version: '1.0.5',
+    date: '2026-06-05',
+    notes: [
+      'Impostazioni riprogettate — le sezioni (Categorie, Budget, Notifiche, Ricorrenti) sono ora in pannelli espandibili per una navigazione più chiara',
+      'Categorie riordinabili — trascina le categorie per cambiarle di ordine',
+      'Modifica transazioni ricorrenti — ora puoi modificare importo, categoria e frequenza senza doverle eliminare e ricreare',
+      'Confronto periodi — nella sezione Grafici puoi confrontare entrate e uscite tra due periodi a scelta, con grafico a barre o a torta',
+    ],
+  },
+  {
     version: '1.0.4',
     date: '2026-06-04',
     notes: [

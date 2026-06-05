@@ -53,6 +53,44 @@ function buildCategoryData(transactions) {
   return Object.entries(map).sort(([, a], [, b]) => b - a).map(([name, value]) => ({ name, value }));
 }
 
+function buildPeriodData(transactions, fromYM, toYM) {
+  const filtered = transactions.filter((t) => {
+    const ym = t.date.slice(0, 7);
+    return ym >= fromYM && ym <= toYM && t.type !== 'transfer';
+  });
+  const income = filtered.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const expense = filtered.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const byCategory = {};
+  filtered.filter((t) => t.type === 'expense').forEach((t) => {
+    byCategory[t.category] = (byCategory[t.category] || 0) + t.amount;
+  });
+  return { income, expense, byCategory };
+}
+
+function buildComparisonBarData(dataA, dataB) {
+  const allCats = new Set([...Object.keys(dataA.byCategory), ...Object.keys(dataB.byCategory)]);
+  return Array.from(allCats)
+    .map((cat) => ({
+      name: cat,
+      A: Math.round((dataA.byCategory[cat] || 0) * 100) / 100,
+      B: Math.round((dataB.byCategory[cat] || 0) * 100) / 100,
+    }))
+    .sort((a, b) => (b.A + b.B) - (a.A + a.B))
+    .slice(0, 8);
+}
+
+function buildPiePeriodData(byCategory) {
+  return Object.entries(byCategory)
+    .sort(([, a], [, b]) => b - a)
+    .map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }));
+}
+
+function periodLabel(fromYear, fromMonth, toYear, toMonth) {
+  const from = `${MONTHS_SHORT[Number(fromMonth) - 1]} ${fromYear}`;
+  const to = `${MONTHS_SHORT[Number(toMonth) - 1]} ${toYear}`;
+  return from === to ? from : `${from} – ${to}`;
+}
+
 export default function GraficiPage({ transactions, wallets = [] }) {
   const { user } = useAuth();
   const [notes, setNotes] = useState('');

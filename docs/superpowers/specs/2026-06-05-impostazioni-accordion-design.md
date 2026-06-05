@@ -1,39 +1,43 @@
-# Impostazioni — Refactor Accordion
+# Impostazioni — Refactor Accordion + Fix UX
 
 **Data:** 2026-06-05  
 **Stato:** Approvato
 
 ## Problema
 
-La pagina `ImpostazioniPage.jsx` presenta tutti i pannelli (categorie entrate, categorie uscite, budget, notifiche, ricorrenti) piatti sulla stessa pagina senza gerarchia visiva, creando confusione nell'utente.
+La pagina `ImpostazioniPage.jsx` presenta tutti i pannelli (categorie entrate, categorie uscite, budget, notifiche, ricorrenti) piatti sulla stessa pagina senza gerarchia visiva, creando confusione nell'utente. Sono presenti anche tre problemi UX/tecnici secondari risolti in questo stesso refactor.
 
 ## Soluzione
 
-Raggruppare il contenuto in 4 sezioni accordion espandibili/collassabili.
+Quattro interventi in un unico rilascio:
 
-## Struttura delle sezioni
+1. **Accordion layout** — le sezioni vengono raggruppate in accordion espandibili
+2. **Warning categorie orfane** — modale di conferma prima di eliminare una categoria usata da transazioni esistenti
+3. **Edit ricorrenti** — form di modifica inline per le transazioni ricorrenti
+4. **Drag and drop categorie** — riordinamento tramite drag via @dnd-kit
+
+---
+
+## 1. Accordion layout
+
+### Struttura delle sezioni
 
 | Ordine | Icon | Titolo | Contenuto |
 |--------|------|--------|-----------|
-| 1 | 🏷 | Categorie | Due subsection: Entrate (chip verdi + input aggiungi) e Uscite (chip rosse + input aggiungi) |
+| 1 | 🏷 | Categorie | Due subsection: Entrate (chip verdi + input aggiungi + drag) e Uscite (chip rosse + input aggiungi + drag) |
 | 2 | 📊 | Budget mensile | Lista budget esistenti con rimozione + form aggiungi nuovo |
 | 3 | 🔔 | Notifiche | Toggle abilita/disabilita notifiche push |
-| 4 | 🔁 | Ricorrenti | Lista transazioni ricorrenti con pulsante elimina |
+| 4 | 🔁 | Ricorrenti | Lista transazioni ricorrenti con pulsanti edit e delete |
 
-## Comportamento
+### Comportamento
 
 - **Stato iniziale:** tutti gli accordion chiusi al mount
-- **Multi-open:** ogni sezione si apre/chiude indipendentemente — aprire una sezione non chiude le altre
-- **Badge conteggio:** sugli accordion chiusi viene mostrato un conteggio grigio in header (es. "Categorie · 12", "Budget · 3") per dare visibilità al contenuto senza aprire
+- **Multi-open:** ogni sezione si apre/chiude indipendentemente
+- **Badge conteggio:** sugli accordion chiusi viene mostrato un conteggio grigio (es. "Categorie · 12", "Budget · 3")
 - **Transizione:** espansione/collasso con CSS transition smooth
 
-## Implementazione tecnica
+### Stato accordion
 
-**File coinvolti:**
-- `src/components/ImpostazioniPage.jsx` — refactor layout
-- `src/components/ImpostazioniPage.css` — nuovi stili accordion
-
-**Stato accordion:**
 ```js
 const [open, setOpen] = useState([]);
 const toggle = (id) => setOpen(prev =>
@@ -42,36 +46,97 @@ const toggle = (id) => setOpen(prev =>
 const isOpen = (id) => open.includes(id);
 ```
 
-**Struttura JSX per ogni accordion:**
-```jsx
-<div className={`settings-accordion ${isOpen('categorie') ? 'open' : ''}`}>
-  <button className="acc-header" onClick={() => toggle('categorie')}>
-    <span className="acc-icon">🏷</span>
-    <span className="acc-title">Categorie</span>
-    {!isOpen('categorie') && <span className="acc-badge">· {totalCategories}</span>}
-    <span className="acc-arrow">{isOpen('categorie') ? '▲' : '▼'}</span>
-  </button>
-  {isOpen('categorie') && (
-    <div className="acc-body">
-      {/* contenuto */}
-    </div>
-  )}
-</div>
+---
+
+## 2. Warning categorie orfane
+
+### Comportamento
+
+Prima di eliminare una categoria, controllare quante transazioni la usano cercando nell'array `transactions` passato come prop (o richiesto da Firestore).
+
+- Se **0 transazioni** → elimina direttamente, nessun modale
+- Se **≥ 1 transazione** → mostra modale di conferma:
+
+> **Eliminare "Cibo"?**  
+> Ci sono 14 transazioni che usano questa categoria. Eliminandola, quelle transazioni manterranno l'etichetta "Cibo" ma non sarà più selezionabile per le nuove transazioni.  
+> [Annulla] [Elimina comunque]
+
+### Comportamento post-eliminazione
+
+Le transazioni esistenti **mantengono il valore originale della categoria** — non vengono migrate. La categoria viene solo rimossa dalla lista in Firestore (`settings/categories`). Le transazioni con quella categoria restano leggibili e filtrabili.
+
+### Prop aggiuntiva necessaria
+
+`ImpostazioniPage` deve ricevere `transactions` come prop da `Dashboard` per contare le occorrenze. Questa prop è già disponibile in Dashboard.
+
+---
+
+## 3. Edit ricorrenti inline
+
+### Comportamento
+
+Nella sezione Ricorrenti, ogni item ha due pulsanti: ✏️ (edit) e × (delete).
+
+Cliccando ✏️, l'item si espande mostrando un form inline precompilato con i valori attuali (stesso pattern di `SalvadanaiPage` per l'edit dell'obiettivo). I campi editabili:
+- Importo
+- Categoria
+- Descrizione
+- Frequenza (giornaliera / settimanale / mensile)
+- Giorno della settimana o giorno del mese (condizionale sulla frequenza)
+
+Salvataggio tramite `updateDoc` sulla collection `users/{uid}/recurring/{id}`.
+
+### Stato locale
+
+```js
+const [editingRecurring, setEditingRecurring] = useState(null); // id della ricorrente in modifica
+const [editFields, setEditFields] = useState({});
 ```
 
-**CSS chiave:**
-- `.settings-accordion` — border-top separatore tra sezioni
-- `.acc-header` — flex row, padding, hover background
-- `.acc-body` — background `#fafafa`, padding, border-top sottile
-- `.acc-badge` — font-size piccolo, colore grigio
+---
 
-**Nessuna dipendenza nuova.** Solo refactor di JSX e CSS esistenti.
+## 4. Drag and drop categorie
 
-## Scope
+### Libreria
 
-Questo refactor riguarda **solo layout e UX**. Non sono in scope:
-- Fix categorie orfane (eliminazione categoria non aggiorna transazioni esistenti)
-- Edit transazioni ricorrenti (attualmente solo delete)
-- Reordering categorie
+`@dnd-kit` — moderna, leggera (~25KB gzipped), accessibile, funziona su mobile via touch.
 
-Questi rimangono come problemi tecnici noti da valutare in un secondo momento.
+Pacchetti da installare:
+```
+npm install @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
+```
+
+### Comportamento
+
+Le chip di categoria (entrate e uscite) sono trascinabili per riordinarle. L'ordine viene salvato su Firestore al rilascio (`onDragEnd`).
+
+Poiché le categorie sono semplici stringhe in un array, l'ordine è definito dall'indice dell'array stesso. `arrayMove` di `@dnd-kit/sortable` viene usato per ricalcolare l'array e `setDoc` per salvarlo.
+
+### Struttura
+
+```jsx
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import { SortableContext, useSortable, arrayMove } from '@dnd-kit/sortable';
+
+// Ogni chip è un componente SortableCategoryPill({ id, label, onRemove })
+// DndContext wrappa la lista, onDragEnd chiama arrayMove + saveCategories
+```
+
+---
+
+## File coinvolti
+
+| File | Modifica |
+|------|----------|
+| `src/components/ImpostazioniPage.jsx` | Refactor completo del layout + logica edit ricorrenti + logica warning orfane |
+| `src/components/ImpostazioniPage.css` | Nuovi stili: accordion, chip drag handle, form edit ricorrenti |
+| `src/components/Dashboard.jsx` | Passa `transactions` come prop a `ImpostazioniPage` |
+| `package.json` | Aggiunta `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` |
+
+---
+
+## Fuori scope
+
+- Migrazione automatica delle transazioni orfane a "Altro"
+- Reordering dei budget
+- Reordering delle ricorrenti

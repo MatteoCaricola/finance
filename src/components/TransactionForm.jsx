@@ -78,7 +78,7 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!amount || !category || !date) return;
+    if (!amount || (!category && !isMovement) || !date) return;
     if (isMovement && !walletId) return;
     if (isTransfer && fromWalletId === walletId) return;
     setLoading(true);
@@ -241,7 +241,7 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
 
         <div className="form-group">
           <label>Categoria <CategoryInfo /></label>
-          <select value={category} onChange={(e) => setCategory(e.target.value)} required>
+          <select value={category} onChange={(e) => setCategory(e.target.value)} required={!isMovement}>
             <option value="">Seleziona...</option>
             {categories.map((c) => (
               <option key={c} value={c}>{c}</option>

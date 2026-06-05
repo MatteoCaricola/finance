@@ -308,3 +308,17 @@
   color: #6b7280;
   cursor: pointer;
 }
+
+@media (max-width: 540px) {
+  .create-row {
+    flex-direction: column;
+  }
+
+  .input-initial {
+    flex: 1 1 auto !important;
+  }
+
+  .btn-save-wallet {
+    width: 100%;
+  }
+}

@@ -145,7 +145,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 20px 16px;
+  padding: 14px 20px 20px;
   flex-wrap: wrap;
 }
 

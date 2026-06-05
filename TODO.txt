@@ -1,0 +1,10 @@
+TODO - Finance Tracker
+======================
+
+-Implementazione IA
+-Report CSV
+-Creazione Nuclei famiglia
+-COndivisione Conti
+-Condivisone salvadani
+-COnfrontare spese dei vari mesi/ anni / categorie
+-sistemare impostazioniP

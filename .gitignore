@@ -16,6 +16,10 @@ dist-ssr
 scripts/serviceAccount.json
 scripts/vapidKeys.json
 
+# Superpowers brainstorm sessions
+.superpowers/
+.playwright-mcp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

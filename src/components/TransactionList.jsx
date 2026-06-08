@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { exportCsv } from '../utils/exportCsv';
 import './TransactionList.css';
 
 const INITIAL_LIMIT = 5;
@@ -30,7 +31,12 @@ export default function TransactionList({ transactions, loading }) {
 
   return (
     <div className="list-card">
-      <h2>Transazioni</h2>
+      <div className="list-header">
+        <h2>Transazioni</h2>
+        <button className="btn-export-csv" onClick={() => exportCsv(transactions)} title="Esporta CSV">
+          ⬇ CSV
+        </button>
+      </div>
       <ul className="tx-list">
         {visible.map((tx) => (
           <li key={tx.id} className="tx-item">

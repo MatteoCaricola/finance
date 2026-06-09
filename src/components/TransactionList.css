@@ -150,6 +150,9 @@
 }
 
 .btn-export-csv {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 0.75rem;
   padding: 0.3rem 0.7rem;
   border-radius: 999px;

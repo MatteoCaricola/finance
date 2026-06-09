@@ -1,4 +1,5 @@
 const TYPE_LABEL = { income: 'Entrata', expense: 'Uscita', transfer: 'Trasferimento' };
+const SEP = ';';
 
 function escapeCsvField(value) {
   if (value === null || value === undefined) return '""';
@@ -7,19 +8,19 @@ function escapeCsvField(value) {
 }
 
 export function exportCsv(transactions) {
-  const header = ['Data', 'Tipo', 'Importo', 'Categoria', 'Descrizione', 'Da (wallet)', 'A (wallet)'];
+  const header = ['Data', 'Tipo', 'Importo (€)', 'Categoria', 'Descrizione', 'Da (wallet)', 'A (wallet)'];
 
   const rows = transactions.map((t) => [
-    t.date,
-    TYPE_LABEL[t.type] ?? t.type,
-    t.amount,
-    t.category ?? '',
-    t.description ?? '',
-    t.type === 'transfer' ? (t.fromWalletName ?? '') : '',
-    t.type === 'transfer' ? (t.walletName ?? '') : '',
-  ].map(escapeCsvField).join(','));
+    escapeCsvField(t.date),
+    escapeCsvField(TYPE_LABEL[t.type] ?? t.type),
+    String(t.amount).replace('.', ','),          // numero non quotato, decimale italiano
+    escapeCsvField(t.category ?? ''),
+    escapeCsvField(t.description ?? ''),
+    escapeCsvField(t.type === 'transfer' ? (t.fromWalletName ?? '') : ''),
+    escapeCsvField(t.type === 'transfer' ? (t.walletName ?? '') : ''),
+  ].join(SEP));
 
-  const csv = '﻿' + [header.map(escapeCsvField).join(','), ...rows].join('\n');
+  const csv = '﻿' + [header.map(escapeCsvField).join(SEP), ...rows].join('\n');
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);

@@ -34,7 +34,11 @@ export default function TransactionList({ transactions, loading }) {
       <div className="list-header">
         <h2>Transazioni</h2>
         <button className="btn-export-csv" onClick={() => exportCsv(transactions)} title="Esporta CSV">
-          ⬇ CSV
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v13M7 11l5 5 5-5"/>
+            <path d="M5 21h14"/>
+          </svg>
+          CSV
         </button>
       </div>
       <ul className="tx-list">

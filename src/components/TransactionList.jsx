@@ -13,23 +13,33 @@ const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('it-IT', { d
 export default function TransactionList({ transactions, loading, nuclei = [] }) {
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const handleDelete = async (id) => {
-    if (!confirm('Eliminare questa transazione?')) return;
+    if (!confirm('Eliminare questa transazione' + (nuclei.length > 0 ? ' e tutte le copie condivise nei nuclei?' : '?'))) return;
+    setDeletingId(id);
     try {
-      await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
-      for (const nucleo of nuclei) {
-        const snap = await getDocs(
-          query(
-            collection(db, 'nuclei', nucleo.id, 'transactions'),
-            where('originalTxId', '==', id),
-            where('ownerUid', '==', user.uid)
+      // Delete from nuclei first (so a failure leaves the personal record intact = retryable)
+      const snaps = await Promise.all(
+        nuclei.map((n) =>
+          getDocs(
+            query(
+              collection(db, 'nuclei', n.id, 'transactions'),
+              where('originalTxId', '==', id),
+              where('ownerUid', '==', user.uid)
+            )
           )
-        );
-        for (const d of snap.docs) await deleteDoc(d.ref);
-      }
-    } catch {
+        )
+      );
+      const refs = snaps.flatMap((s) => s.docs.map((docSnap) => docSnap.ref));
+      await Promise.all(refs.map((ref) => deleteDoc(ref)));
+      // Only delete personal record after all copies are removed
+      await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
+    } catch (err) {
+      console.error('Errore eliminazione:', err);
       alert('Errore durante l\'eliminazione. Riprova.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -70,7 +80,7 @@ export default function TransactionList({ transactions, loading, nuclei = [] }) 
             <span className={`tx-amount ${tx.type}`}>
               {tx.type === 'transfer' ? '↔' : tx.type === 'expense' ? '−' : '+'}{fmt(tx.amount)}
             </span>
-            <button className="tx-delete" onClick={() => handleDelete(tx.id)} title="Elimina">×</button>
+            <button className="tx-delete" onClick={() => handleDelete(tx.id)} disabled={deletingId === tx.id} title="Elimina">×</button>
           </li>
         ))}
       </ul>

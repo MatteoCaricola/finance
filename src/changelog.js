@@ -1,5 +1,15 @@
 export const CHANGELOG = [
   {
+    version: "1.1.0",
+    date: "2026-06-10",
+    notes: [
+      "Nuclei — crea gruppi condivisi con altri utenti: invita con un link, condividi transazioni scelte e vedi il riepilogo mensile per membro",
+      "Condivisione transazioni — al momento dell'inserimento puoi scegliere in quali nuclei condividere la transazione; oppure aggiungila retroattivamente dallo storico personale",
+      "Grafici per nucleo — seleziona un nucleo nella sezione Grafici per vedere entrate, uscite e categorie del gruppo, con filtro per singolo membro",
+      "Eliminazione sincronizzata — eliminare una transazione personale rimuove automaticamente le copie condivise nei nuclei",
+    ],
+  },
+  {
     version: "1.0.5",
     date: "2026-06-05",
     notes: [

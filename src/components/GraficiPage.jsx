@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, collection, orderBy, query } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -91,12 +91,15 @@ function periodLabel(fromYear, fromMonth, toYear, toMonth) {
   return from === to ? from : `${from} – ${to}`;
 }
 
-export default function GraficiPage({ transactions, wallets = [] }) {
+export default function GraficiPage({ transactions, wallets = [], nuclei = [] }) {
   const { user } = useAuth();
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState(true);
 
   const [fundFilter, setFundFilter] = useState('all');
+  const [nucleoFilter, setNucleoFilter] = useState(null);
+  const [nucleoMemberFilter, setNucleoMemberFilter] = useState('all');
+  const [nucleoTx, setNucleoTx] = useState([]);
 
   const [accordionOpen, setAccordionOpen] = useState(false);
   const [filterMonth, setFilterMonth]       = useState('');
@@ -125,6 +128,15 @@ export default function GraficiPage({ transactions, wallets = [] }) {
       if (snap.exists()) setNotes(snap.data().content || '');
     });
   }, [user.uid]);
+
+  useEffect(() => {
+    if (!nucleoFilter) { setNucleoTx([]); return; }
+    const unsub = onSnapshot(
+      query(collection(db, 'nuclei', nucleoFilter, 'transactions'), orderBy('date', 'desc')),
+      (snap) => setNucleoTx(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    );
+    return unsub;
+  }, [nucleoFilter]);
 
   const handleNotesChange = (e) => { setNotes(e.target.value); setSaved(false); };
   const saveNotes = async () => {
@@ -167,9 +179,14 @@ export default function GraficiPage({ transactions, wallets = [] }) {
   ].filter(Boolean);
 
   const fundFiltered = (() => {
+    if (nucleoFilter) {
+      const base = nucleoMemberFilter === 'all'
+        ? nucleoTx
+        : nucleoTx.filter((t) => t.ownerUid === nucleoMemberFilter);
+      return base.filter((t) => t.type !== 'transfer');
+    }
     if (fundFilter === 'all')     return filtered.filter((t) => t.type !== 'transfer');
     if (fundFilter === 'general') return filtered.filter((t) => !t.walletId && !t.fromWalletId && t.type !== 'transfer');
-    // specific wallet: remap inflows as income, outflows as expense
     return filtered
       .filter((t) => t.walletId === fundFilter || t.fromWalletId === fundFilter)
       .map((t) => ({ ...t, type: t.walletId === fundFilter ? 'income' : 'expense' }));
@@ -232,8 +249,58 @@ export default function GraficiPage({ transactions, wallets = [] }) {
               {w.emoji} {w.name}
             </button>
           ))}
+          {nuclei.length > 0 && (
+            <>
+              <div className="fund-divider" />
+              {nuclei.map((n) => (
+                <button
+                  key={n.id}
+                  className={`${nucleoFilter === n.id ? 'active' : ''} nucleo-chip`}
+                  onClick={() => {
+                    if (nucleoFilter === n.id) {
+                      setNucleoFilter(null);
+                    } else {
+                      setNucleoFilter(n.id);
+                      setFundFilter('all');
+                    }
+                    setNucleoMemberFilter('all');
+                  }}
+                >
+                  👥 {n.name}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       </div>
+
+      {nucleoFilter && (() => {
+        const members = [...new Map(nucleoTx.map((t) => [t.ownerUid, t.ownerName])).entries()]
+          .map(([uid, name]) => ({ uid, name }));
+        if (members.length <= 1) return null;
+        return (
+          <div className="fund-selector nucleo-member-selector">
+            <span className="fund-selector-label">Membro:</span>
+            <div className="fund-tabs">
+              <button
+                className={nucleoMemberFilter === 'all' ? 'active' : ''}
+                onClick={() => setNucleoMemberFilter('all')}
+              >
+                Tutti
+              </button>
+              {members.map((m) => (
+                <button
+                  key={m.uid}
+                  className={nucleoMemberFilter === m.uid ? 'active' : ''}
+                  onClick={() => setNucleoMemberFilter(m.uid)}
+                >
+                  {m.name || 'Utente'}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="accordion">
         <button

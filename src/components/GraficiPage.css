@@ -379,3 +379,24 @@
   .confronto-pies   { grid-template-columns: 1fr; }
   .confronto-delta  { flex-direction: column; align-items: flex-start; gap: 4px; }
 }
+
+.fund-divider {
+  width: 1px;
+  background: #e5e7eb;
+  align-self: stretch;
+  margin: 0 4px;
+}
+
+.nucleo-chip {
+  border-color: #a5b4fc !important;
+  color: #4f46e5 !important;
+  background: #eef2ff !important;
+}
+
+.nucleo-chip.active {
+  background: #4f46e5 !important;
+  color: #fff !important;
+  border-color: #4f46e5 !important;
+}
+
+.nucleo-member-selector { margin-top: 0.5rem; }

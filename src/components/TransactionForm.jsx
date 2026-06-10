@@ -57,6 +57,7 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
   const [recurringDayOfMonth, setRecurringDayOfMonth] = useState(todayDayOfMonth);
   const [nucleiAccOpen, setNucleiAccOpen] = useState(false);
   const [checkedNuclei, setCheckedNuclei] = useState([]);
+  const [error, setError] = useState('');
 
   const categories = type === 'income' ? categoriesIncome : categoriesExpense;
   const isTransfer = isMovement && walletId && fromWalletId;
@@ -69,7 +70,7 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
 
   const handleMovementToggle = (e) => {
     setIsMovement(e.target.checked);
-    if (e.target.checked) { setIsRecurring(false); }
+    if (e.target.checked) { setIsRecurring(false); setCheckedNuclei([]); }
     else { setWalletId(''); setFromWalletId(''); }
   };
 
@@ -84,6 +85,7 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
     if (isMovement && !walletId) return;
     if (isTransfer && fromWalletId === walletId) return;
     setLoading(true);
+    setError('');
     try {
       const data = {
         type: isTransfer ? 'transfer' : type,
@@ -105,21 +107,27 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
       }
       const txRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), data);
 
-      await Promise.all(
-        checkedNuclei.map((nucleoId) =>
-          addDoc(collection(db, 'nuclei', nucleoId, 'transactions'), {
-            originalTxId: txRef.id,
-            ownerUid: user.uid,
-            ownerName: user.displayName ?? user.email ?? 'Utente',
-            amount: data.amount,
-            category: data.category,
-            description: data.description,
-            date: data.date,
-            type: data.type,
-            createdAt: serverTimestamp(),
-          })
-        )
-      );
+      if (checkedNuclei.length > 0 && !isMovement) {
+        try {
+          await Promise.all(
+            checkedNuclei.map((nucleoId) =>
+              addDoc(collection(db, 'nuclei', nucleoId, 'transactions'), {
+                originalTxId: txRef.id,
+                ownerUid: user.uid,
+                ownerName: user.displayName ?? user.email ?? 'Utente',
+                amount: data.amount,
+                category: data.category,
+                description: data.description,
+                date: data.date,
+                type: data.type,
+                createdAt: serverTimestamp(),
+              })
+            )
+          );
+        } catch {
+          setError('Transazione salvata, ma la condivisione nel nucleo è fallita. Riprova dal dettaglio nucleo.');
+        }
+      }
 
       if (isRecurring) {
         await addDoc(collection(db, 'users', user.uid, 'recurring'), {
@@ -357,6 +365,7 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
           </div>
         )}
 
+        {error && <p className="form-error">{error}</p>}
         <button type="submit" className={`btn-submit ${isTransfer ? 'transfer' : type}`} disabled={loading}>
           {loading ? 'Salvataggio...' : isTransfer ? '↔ Trasferisci' : '+ Aggiungi'}
         </button>

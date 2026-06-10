@@ -134,25 +134,29 @@ export default function Dashboard() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const joinCode = params.get('join');
+    const joinCode = params.get('join')?.trim();
     if (!joinCode) return;
     window.history.replaceState({}, '', window.location.pathname);
 
     (async () => {
-      const snap = await getDocs(
-        query(collection(db, 'nuclei'), where('inviteCode', '==', joinCode))
-      );
-      if (snap.empty) {
+      try {
+        const snap = await getDocs(
+          query(collection(db, 'nuclei'), where('inviteCode', '==', joinCode))
+        );
+        if (snap.empty) {
+          setJoinPopup({ error: true });
+          return;
+        }
+        const nucleoDoc = snap.docs[0];
+        const nucleo = { id: nucleoDoc.id, ...nucleoDoc.data() };
+        const alreadyMember = (nucleo.members ?? []).includes(user.uid);
+        if (!alreadyMember) {
+          await updateDoc(doc(db, 'nuclei', nucleo.id), { members: arrayUnion(user.uid) });
+        }
+        setJoinPopup({ nucleoName: nucleo.name, nucleoId: nucleo.id, alreadyMember });
+      } catch {
         setJoinPopup({ error: true });
-        return;
       }
-      const nucleoDoc = snap.docs[0];
-      const nucleo = { id: nucleoDoc.id, ...nucleoDoc.data() };
-      const alreadyMember = nucleo.members.includes(user.uid);
-      if (!alreadyMember) {
-        await updateDoc(doc(db, 'nuclei', nucleo.id), { members: arrayUnion(user.uid) });
-      }
-      setJoinPopup({ nucleoName: nucleo.name, nucleoId: nucleo.id, alreadyMember });
     })();
   }, [user.uid]);
 

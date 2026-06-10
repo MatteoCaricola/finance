@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [recurring, setRecurring] = useState([]);
   const [recurringLoading, setRecurringLoading] = useState(true);
   const [nuclei, setNuclei] = useState([]);
+  const [joinPopup, setJoinPopup] = useState(null);
   const recurringChecked = useRef(false);
 
   const [accordionOpen, setAccordionOpen] = useState(false);
@@ -130,6 +131,30 @@ export default function Dashboard() {
       }
     }
   }, [recurring, recurringLoading, user.uid]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const joinCode = params.get('join');
+    if (!joinCode) return;
+    window.history.replaceState({}, '', window.location.pathname);
+
+    (async () => {
+      const snap = await getDocs(
+        query(collection(db, 'nuclei'), where('inviteCode', '==', joinCode))
+      );
+      if (snap.empty) {
+        setJoinPopup({ error: true });
+        return;
+      }
+      const nucleoDoc = snap.docs[0];
+      const nucleo = { id: nucleoDoc.id, ...nucleoDoc.data() };
+      const alreadyMember = nucleo.members.includes(user.uid);
+      if (!alreadyMember) {
+        await updateDoc(doc(db, 'nuclei', nucleo.id), { members: arrayUnion(user.uid) });
+      }
+      setJoinPopup({ nucleoName: nucleo.name, nucleoId: nucleo.id, alreadyMember });
+    })();
+  }, [user.uid]);
 
   const handleDeleteRecurring = async (id) => {
     await deleteDoc(doc(db, 'users', user.uid, 'recurring', id));
@@ -316,6 +341,33 @@ export default function Dashboard() {
           <footer className="dash-footer">v{__APP_VERSION__}</footer>
         </main>
       </div>
+
+      {joinPopup && (
+        <div className="join-overlay" onClick={() => setJoinPopup(null)}>
+          <div className="join-popup" onClick={(e) => e.stopPropagation()}>
+            {joinPopup.error ? (
+              <>
+                <div className="join-icon">❌</div>
+                <h3>Link non valido</h3>
+                <p>Questo link di invito non esiste o è scaduto.</p>
+                <button className="join-btn" onClick={() => setJoinPopup(null)}>Chiudi</button>
+              </>
+            ) : (
+              <>
+                <div className="join-icon">🎉</div>
+                <h3>{joinPopup.alreadyMember ? 'Sei già membro!' : `Sei entrato in "${joinPopup.nucleoName}"!`}</h3>
+                <p>{joinPopup.alreadyMember
+                  ? 'Sei già membro di questo nucleo.'
+                  : 'Ora puoi vedere e condividere transazioni con i membri del nucleo.'
+                }</p>
+                <button className="join-btn" onClick={() => { setJoinPopup(null); setPage('nuclei'); }}>
+                  Vai al nucleo →
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

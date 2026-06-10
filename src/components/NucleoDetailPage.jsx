@@ -4,7 +4,11 @@ import { db } from '../firebase';
 import './NucleoDetailPage.css';
 
 const fmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
-const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+const fmtDate = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d + 'T00:00:00');
+  return isNaN(dt) ? '—' : dt.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+};
 
 function StoricoModal({ nucleo, user, userTransactions, nucleoTransactions, onClose }) {
   const [selected, setSelected] = useState([]);
@@ -22,21 +26,23 @@ function StoricoModal({ nucleo, user, userTransactions, nucleoTransactions, onCl
     setSaving(true);
     setSaveError('');
     try {
-      for (const txId of selected) {
-        const tx = userTransactions.find((t) => t.id === txId);
-        if (!tx) continue;
-        await addDoc(collection(db, 'nuclei', nucleo.id, 'transactions'), {
-          originalTxId: tx.id,
-          ownerUid: user.uid,
-          ownerName: user.displayName,
-          amount: tx.amount,
-          category: tx.category,
-          description: tx.description || '',
-          date: tx.date,
-          type: tx.type,
-          createdAt: serverTimestamp(),
-        });
-      }
+      await Promise.all(
+        selected.map((txId) => {
+          const tx = userTransactions.find((t) => t.id === txId);
+          if (!tx) return Promise.resolve();
+          return addDoc(collection(db, 'nuclei', nucleo.id, 'transactions'), {
+            originalTxId: tx.id,
+            ownerUid: user.uid,
+            ownerName: user.displayName ?? user.email ?? 'Utente',
+            amount: tx.amount,
+            category: tx.category,
+            description: tx.description || '',
+            date: tx.date,
+            type: tx.type,
+            createdAt: serverTimestamp(),
+          });
+        })
+      );
       onClose();
     } catch {
       setSaveError('Errore durante il salvataggio. Riprova.');
@@ -130,7 +136,8 @@ export default function NucleoDetailPage({ nucleo, user, userTransactions, onBac
   nucleoTx
     .filter((t) => t.type === 'expense' && t.date && t.date.startsWith(currentMonth))
     .forEach((t) => {
-      memberSummary[t.ownerName] = (memberSummary[t.ownerName] || 0) + t.amount;
+      const key = t.ownerName || 'Utente';
+      memberSummary[key] = (memberSummary[key] || 0) + t.amount;
     });
 
   return (

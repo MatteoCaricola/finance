@@ -9,6 +9,7 @@ export default function NucleiPage({ nuclei, user, transactions }) {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   const selected = nuclei.find((n) => n.id === selectedId);
 
@@ -28,7 +29,8 @@ export default function NucleiPage({ nuclei, user, transactions }) {
     if (!newName.trim()) return;
     setSaving(true);
     try {
-      const inviteCode = Math.random().toString(36).slice(2, 10);
+      setCreateError('');
+      const inviteCode = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
       const ref = await addDoc(collection(db, 'nuclei'), {
         name: newName.trim(),
         createdBy: user.uid,
@@ -39,6 +41,8 @@ export default function NucleiPage({ nuclei, user, transactions }) {
       setCreating(false);
       setNewName('');
       setSelectedId(ref.id);
+    } catch {
+      setCreateError('Errore durante la creazione. Riprova.');
     } finally {
       setSaving(false);
     }
@@ -63,6 +67,7 @@ export default function NucleiPage({ nuclei, user, transactions }) {
             onChange={(e) => setNewName(e.target.value)}
             required
           />
+          {createError && <p style={{ color: '#ef4444', fontSize: '0.8rem', margin: '0 0 0.5rem' }}>{createError}</p>}
           <div className="nucleo-create-actions">
             <button type="button" onClick={() => { setCreating(false); setNewName(''); }}>
               Annulla
@@ -87,7 +92,7 @@ export default function NucleiPage({ nuclei, user, transactions }) {
             <div className="nucleo-info">
               <span className="nucleo-name">{n.name}</span>
               <span className="nucleo-meta">
-                {n.members.length} {n.members.length === 1 ? 'membro' : 'membri'}
+                {(n.members ?? []).length} {(n.members ?? []).length === 1 ? 'membro' : 'membri'}
               </span>
             </div>
             <span className="nucleo-arrow">›</span>

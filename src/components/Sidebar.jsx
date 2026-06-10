@@ -4,6 +4,7 @@ const NAV = [
   { id: 'movimenti',    label: 'Movimenti',    icon: '↕' },
   { id: 'salvadanai',   label: 'Salvadanai',   icon: '🐷' },
   { id: 'grafici',      label: 'Grafici',       icon: '📊' },
+  { id: 'nuclei',       label: 'Nuclei',        icon: '👥' },
   { id: 'impostazioni', label: 'Impostazioni',  icon: '⚙️' },
 ];
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, where, onSnapshot, doc, addDoc, getDocs, updateDoc, deleteDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from './Sidebar';
@@ -12,6 +12,7 @@ import BudgetPanel from './BudgetPanel';
 import NotificationBell from './NotificationBell';
 import InstallButton from './InstallButton';
 import NotificationPrompt from './NotificationPrompt';
+import NucleiPage from './NucleiPage';
 import './Dashboard.css';
 
 const fmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
@@ -22,6 +23,7 @@ const NAV = [
   { id: 'movimenti',    label: 'Movimenti',    icon: '↕' },
   { id: 'salvadanai',   label: 'Salvadanai',   icon: '🐷' },
   { id: 'grafici',      label: 'Grafici',       icon: '📊' },
+  { id: 'nuclei',       label: 'Nuclei',        icon: '👥' },
   { id: 'impostazioni', label: 'Impostazioni',  icon: '⚙️' },
 ];
 
@@ -37,6 +39,7 @@ export default function Dashboard() {
 
   const [recurring, setRecurring] = useState([]);
   const [recurringLoading, setRecurringLoading] = useState(true);
+  const [nuclei, setNuclei] = useState([]);
   const recurringChecked = useRef(false);
 
   const [accordionOpen, setAccordionOpen] = useState(false);
@@ -74,7 +77,11 @@ export default function Dashboard() {
       query(collection(db, 'users', user.uid, 'recurring'), orderBy('createdAt')),
       (snap) => { setRecurring(snap.docs.map((d) => ({ id: d.id, ...d.data() }))); setRecurringLoading(false); }
     );
-    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); };
+    const unsub6 = onSnapshot(
+      query(collection(db, 'nuclei'), where('members', 'array-contains', user.uid)),
+      (snap) => setNuclei(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    );
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); };
   }, [user.uid]);
 
   useEffect(() => {
@@ -276,7 +283,7 @@ export default function Dashboard() {
               </div>
 
               <div className="dash-grid">
-                <TransactionForm wallets={wallets} categoriesIncome={categoriesIncome} categoriesExpense={categoriesExpense} />
+                <TransactionForm wallets={wallets} categoriesIncome={categoriesIncome} categoriesExpense={categoriesExpense} nuclei={nuclei} />
                 <TransactionList transactions={displayed} loading={loading} />
               </div>
             </>
@@ -287,7 +294,11 @@ export default function Dashboard() {
           )}
 
           {page === 'grafici' && (
-            <GraficiPage transactions={transactions} wallets={wallets} />
+            <GraficiPage transactions={transactions} wallets={wallets} nuclei={nuclei} />
+          )}
+
+          {page === 'nuclei' && (
+            <NucleiPage nuclei={nuclei} user={user} transactions={transactions} />
           )}
 
           {page === 'impostazioni' && (

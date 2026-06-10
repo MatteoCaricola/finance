@@ -131,9 +131,11 @@ export default function GraficiPage({ transactions, wallets = [], nuclei = [] })
 
   useEffect(() => {
     if (!nucleoFilter) { setNucleoTx([]); return; }
+    setNucleoTx([]);  // clear stale data immediately
     const unsub = onSnapshot(
       query(collection(db, 'nuclei', nucleoFilter, 'transactions'), orderBy('date', 'desc')),
-      (snap) => setNucleoTx(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      (snap) => setNucleoTx(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => { console.error('nucleoTx snapshot error:', err); setNucleoTx([]); }
     );
     return unsub;
   }, [nucleoFilter]);
@@ -229,22 +231,22 @@ export default function GraficiPage({ transactions, wallets = [], nuclei = [] })
         <span className="fund-selector-label">Fondo:</span>
         <div className="fund-tabs">
           <button
-            className={fundFilter === 'all' ? 'active' : ''}
-            onClick={() => setFundFilter('all')}
+            className={!nucleoFilter && fundFilter === 'all' ? 'active' : ''}
+            onClick={() => { setFundFilter('all'); setNucleoFilter(null); setNucleoMemberFilter('all'); }}
           >
-            Tutti
+            Tutti i fondi
           </button>
           <button
-            className={fundFilter === 'general' ? 'active' : ''}
-            onClick={() => setFundFilter('general')}
+            className={!nucleoFilter && fundFilter === 'general' ? 'active' : ''}
+            onClick={() => { setFundFilter('general'); setNucleoFilter(null); setNucleoMemberFilter('all'); }}
           >
             Generale
           </button>
           {wallets.map((w) => (
             <button
               key={w.id}
-              className={fundFilter === w.id ? 'active' : ''}
-              onClick={() => setFundFilter(w.id)}
+              className={!nucleoFilter && fundFilter === w.id ? 'active' : ''}
+              onClick={() => { setFundFilter(w.id); setNucleoFilter(null); setNucleoMemberFilter('all'); }}
             >
               {w.emoji} {w.name}
             </button>

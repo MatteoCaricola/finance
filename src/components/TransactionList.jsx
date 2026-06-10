@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { deleteDoc, doc } from 'firebase/firestore';
+import { deleteDoc, doc, getDocs, query, where, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { exportCsv } from '../utils/exportCsv';
@@ -10,13 +10,27 @@ const INITIAL_LIMIT = 5;
 const fmt = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
 const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
 
-export default function TransactionList({ transactions, loading }) {
+export default function TransactionList({ transactions, loading, nuclei = [] }) {
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
 
   const handleDelete = async (id) => {
     if (!confirm('Eliminare questa transazione?')) return;
-    await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
+      for (const nucleo of nuclei) {
+        const snap = await getDocs(
+          query(
+            collection(db, 'nuclei', nucleo.id, 'transactions'),
+            where('originalTxId', '==', id),
+            where('ownerUid', '==', user.uid)
+          )
+        );
+        for (const d of snap.docs) await deleteDoc(d.ref);
+      }
+    } catch {
+      alert('Errore durante l\'eliminazione. Riprova.');
+    }
   };
 
   if (loading) return <div className="list-card"><p className="empty">Caricamento...</p></div>;

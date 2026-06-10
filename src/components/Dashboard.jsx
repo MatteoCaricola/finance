@@ -313,7 +313,7 @@ export default function Dashboard() {
 
               <div className="dash-grid">
                 <TransactionForm wallets={wallets} categoriesIncome={categoriesIncome} categoriesExpense={categoriesExpense} nuclei={nuclei} />
-                <TransactionList transactions={displayed} loading={loading} />
+                <TransactionList transactions={displayed} loading={loading} nuclei={nuclei} />
               </div>
             </>
           )}

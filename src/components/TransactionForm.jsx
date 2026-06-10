@@ -40,7 +40,7 @@ const todayDayOfMonth = () => new Date().getDate();
 
 const DAYS_OF_WEEK = ['', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
-export default function TransactionForm({ onAdded, wallets = [], categoriesIncome = [], categoriesExpense = [] }) {
+export default function TransactionForm({ onAdded, wallets = [], categoriesIncome = [], categoriesExpense = [], nuclei = [] }) {
   const { user } = useAuth();
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
@@ -55,6 +55,8 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
   const [recurringFrequency, setRecurringFrequency] = useState('monthly');
   const [recurringDayOfWeek, setRecurringDayOfWeek] = useState(todayDayOfWeek);
   const [recurringDayOfMonth, setRecurringDayOfMonth] = useState(todayDayOfMonth);
+  const [nucleiAccOpen, setNucleiAccOpen] = useState(false);
+  const [checkedNuclei, setCheckedNuclei] = useState([]);
 
   const categories = type === 'income' ? categoriesIncome : categoriesExpense;
   const isTransfer = isMovement && walletId && fromWalletId;
@@ -101,7 +103,23 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
         data.fromWalletId = fromWalletId;
         data.fromWalletName = fromWallet?.name ?? '';
       }
-      await addDoc(collection(db, 'users', user.uid, 'transactions'), data);
+      const txRef = await addDoc(collection(db, 'users', user.uid, 'transactions'), data);
+
+      await Promise.all(
+        checkedNuclei.map((nucleoId) =>
+          addDoc(collection(db, 'nuclei', nucleoId, 'transactions'), {
+            originalTxId: txRef.id,
+            ownerUid: user.uid,
+            ownerName: user.displayName ?? user.email ?? 'Utente',
+            amount: data.amount,
+            category: data.category,
+            description: data.description,
+            date: data.date,
+            type: data.type,
+            createdAt: serverTimestamp(),
+          })
+        )
+      );
 
       if (isRecurring) {
         await addDoc(collection(db, 'users', user.uid, 'recurring'), {
@@ -129,6 +147,8 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
       setRecurringFrequency('monthly');
       setRecurringDayOfWeek(todayDayOfWeek());
       setRecurringDayOfMonth(todayDayOfMonth());
+      setNucleiAccOpen(false);
+      setCheckedNuclei([]);
       onAdded?.();
     } finally {
       setLoading(false);
@@ -297,6 +317,42 @@ export default function TransactionForm({ onAdded, wallets = [], categoriesIncom
               <p className="transfer-hint">
                 ↔ Trasferimento tra salvadanai — non verrà conteggiato nelle spese
               </p>
+            )}
+          </div>
+        )}
+
+        {nuclei.length > 0 && !isMovement && (
+          <div className="nuclei-acc">
+            <button
+              type="button"
+              className={`nuclei-acc-trigger${nucleiAccOpen ? ' open' : ''}`}
+              onClick={() => setNucleiAccOpen((v) => !v)}
+            >
+              <span>
+                Condividi nel nucleo
+                {checkedNuclei.length > 0 && (
+                  <span className="nuclei-acc-badge">{checkedNuclei.length}</span>
+                )}
+              </span>
+              <span className="nuclei-acc-arrow">{nucleiAccOpen ? '▲' : '▼'}</span>
+            </button>
+            {nucleiAccOpen && (
+              <div className="nuclei-acc-body">
+                {nuclei.map((n) => (
+                  <label key={n.id} className="nucleo-check-label">
+                    <input
+                      type="checkbox"
+                      checked={checkedNuclei.includes(n.id)}
+                      onChange={(e) =>
+                        setCheckedNuclei((prev) =>
+                          e.target.checked ? [...prev, n.id] : prev.filter((id) => id !== n.id)
+                        )
+                      }
+                    />
+                    👥 {n.name}
+                  </label>
+                ))}
+              </div>
             )}
           </div>
         )}

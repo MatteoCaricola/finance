@@ -9,16 +9,21 @@ service cloud.firestore {
 
     // Nuclei condivisi
     match /nuclei/{nid} {
-      allow read, update: if request.auth != null
+      // Tutti gli utenti autenticati possono leggere (necessario per lookup inviteCode)
+      allow read: if request.auth != null;
+      // Solo i membri possono aggiornare (es. join via arrayUnion)
+      allow update: if request.auth != null
         && request.auth.uid in resource.data.members;
-      allow create: if request.auth != null;
+      // Chiunque può creare, ma deve includere se stesso nei membri
+      allow create: if request.auth != null
+        && request.auth.uid in request.resource.data.members;
     }
 
     match /nuclei/{nid}/transactions/{txId} {
       // Tutti i membri possono leggere
       allow read: if request.auth != null
         && request.auth.uid in get(/databases/$(database)/documents/nuclei/$(nid)).data.members;
-      // Solo il proprietario può scrivere/eliminare
+      // Solo il proprietario può scrivere
       allow create: if request.auth != null
         && request.auth.uid in get(/databases/$(database)/documents/nuclei/$(nid)).data.members
         && request.resource.data.ownerUid == request.auth.uid;

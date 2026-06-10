@@ -25,13 +25,14 @@ export default function TransactionList({ transactions, loading, nuclei = [] }) 
           getDocs(
             query(
               collection(db, 'nuclei', n.id, 'transactions'),
-              where('originalTxId', '==', id),
-              where('ownerUid', '==', user.uid)
+              where('originalTxId', '==', id)
             )
           )
         )
       );
-      const refs = snaps.flatMap((s) => s.docs.map((docSnap) => docSnap.ref));
+      const refs = snaps.flatMap((s) =>
+        s.docs.filter((docSnap) => docSnap.data().ownerUid === user.uid).map((docSnap) => docSnap.ref)
+      );
       await Promise.all(refs.map((ref) => deleteDoc(ref)));
       // Only delete personal record after all copies are removed
       await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));

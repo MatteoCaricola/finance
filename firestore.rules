@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Dati utente privati — invariati
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Nuclei condivisi
+    match /nuclei/{nid} {
+      allow read, update: if request.auth != null
+        && request.auth.uid in resource.data.members;
+      allow create: if request.auth != null;
+    }
+
+    match /nuclei/{nid}/transactions/{txId} {
+      // Tutti i membri possono leggere
+      allow read: if request.auth != null
+        && request.auth.uid in get(/databases/$(database)/documents/nuclei/$(nid)).data.members;
+      // Solo il proprietario può scrivere/eliminare
+      allow create: if request.auth != null
+        && request.auth.uid in get(/databases/$(database)/documents/nuclei/$(nid)).data.members
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow delete: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid;
+    }
+  }
+}

@@ -14,9 +14,18 @@ function StoricoModal({ nucleo, user, userTransactions, nucleoTransactions, onCl
   const [selected, setSelected] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
 
   const sharedIds = new Set(nucleoTransactions.map((t) => t.originalTxId));
   const available = userTransactions.filter((t) => t.type !== 'transfer' && !sharedIds.has(t.id));
+
+  const q = search.trim().toLowerCase();
+  const filtered = available.filter((t) => {
+    if (typeFilter !== 'all' && t.type !== typeFilter) return false;
+    if (q && !t.category?.toLowerCase().includes(q) && !t.description?.toLowerCase().includes(q)) return false;
+    return true;
+  });
 
   const toggle = (id) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -58,11 +67,34 @@ function StoricoModal({ nucleo, user, userTransactions, nucleoTransactions, onCl
           <span>Aggiungi dal tuo storico</span>
           <button onClick={onClose}>✕</button>
         </div>
+        <div className="storico-filters">
+          <input
+            className="storico-search"
+            type="text"
+            placeholder="Cerca categoria o descrizione..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="storico-type-chips">
+            {[['all', 'Tutti'], ['expense', 'Uscite'], ['income', 'Entrate']].map(([val, label]) => (
+              <button
+                key={val}
+                className={`storico-type-chip ${typeFilter === val ? 'active' : ''}`}
+                onClick={() => setTypeFilter(val)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="storico-modal-body">
           {available.length === 0 && (
             <p className="storico-empty">Tutte le tue transazioni sono già condivise in questo nucleo.</p>
           )}
-          {available.map((tx) => (
+          {available.length > 0 && filtered.length === 0 && (
+            <p className="storico-empty">Nessun risultato per i filtri selezionati.</p>
+          )}
+          {filtered.map((tx) => (
             <div
               key={tx.id}
               className={`storico-item ${selected.includes(tx.id) ? 'selected' : ''}`}

@@ -52,13 +52,16 @@ export default function Dashboard() {
   const [filterSearch, setFilterSearch] = useState('');
 
   useEffect(() => {
+    const ignore = () => {};
     const unsub1 = onSnapshot(
       query(collection(db, 'users', user.uid, 'transactions'), orderBy('date', 'desc')),
-      (snap) => { setTransactions(snap.docs.map((d) => ({ id: d.id, ...d.data() }))); setLoading(false); }
+      (snap) => { setTransactions(snap.docs.map((d) => ({ id: d.id, ...d.data() }))); setLoading(false); },
+      ignore
     );
     const unsub2 = onSnapshot(
       query(collection(db, 'users', user.uid, 'wallets'), orderBy('createdAt')),
-      (snap) => setWallets(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      (snap) => setWallets(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      ignore
     );
     const unsub3 = onSnapshot(
       doc(db, 'users', user.uid, 'settings', 'categories'),
@@ -68,19 +71,23 @@ export default function Dashboard() {
           if (data.income?.length)  setCategoriesIncome(data.income);
           if (data.expense?.length) setCategoriesExpense(data.expense);
         }
-      }
+      },
+      ignore
     );
     const unsub4 = onSnapshot(
       doc(db, 'users', user.uid, 'settings', 'budgets'),
-      (snap) => { if (snap.exists()) setBudgets(snap.data()); }
+      (snap) => { if (snap.exists()) setBudgets(snap.data()); },
+      ignore
     );
     const unsub5 = onSnapshot(
       query(collection(db, 'users', user.uid, 'recurring'), orderBy('createdAt')),
-      (snap) => { setRecurring(snap.docs.map((d) => ({ id: d.id, ...d.data() }))); setRecurringLoading(false); }
+      (snap) => { setRecurring(snap.docs.map((d) => ({ id: d.id, ...d.data() }))); setRecurringLoading(false); },
+      ignore
     );
     const unsub6 = onSnapshot(
       query(collection(db, 'nuclei'), where('members', 'array-contains', user.uid)),
-      (snap) => setNuclei(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      (snap) => setNuclei(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      ignore
     );
     return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); };
   }, [user.uid]);
@@ -339,6 +346,7 @@ export default function Dashboard() {
               recurring={recurring}
               onDeleteRecurring={handleDeleteRecurring}
               transactions={transactions}
+              wallets={wallets}
             />
           )}
 

@@ -1,5 +1,13 @@
 export const CHANGELOG = [
   {
+    version: "1.1.1",
+    date: "2026-07-01",
+    notes: [
+      "Zona pericolosa nelle Impostazioni — puoi cancellare tutti i tuoi dati o eliminare definitivamente l'account",
+      "Filtri nella modal 'Aggiungi dal mio storico' — cerca per testo e filtra per tipo (entrate/uscite)",
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-06-10",
     notes: [

@@ -182,6 +182,44 @@
   cursor: pointer;
 }
 
+.storico-filters {
+  padding: 0.6rem 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+  padding-bottom: 0.65rem;
+}
+
+.storico-search {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.85rem;
+  outline: none;
+  background: #f9fafb;
+}
+.storico-search:focus { border-color: #6366f1; background: #fff; }
+
+.storico-type-chips { display: flex; gap: 0.4rem; }
+
+.storico-type-chip {
+  background: none;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+}
+.storico-type-chip.active {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #fff;
+}
+
 .storico-modal-body { flex: 1; overflow-y: auto; padding: 0.75rem 1rem; }
 .storico-empty { color: #9ca3af; font-size: 0.85rem; text-align: center; padding: 1.5rem 0; }
 .storico-error { color: #ef4444; font-size: 0.8rem; padding: 0 1rem 0.5rem; margin: 0; }

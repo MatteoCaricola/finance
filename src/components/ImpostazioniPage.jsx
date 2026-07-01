@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { deleteUser } from 'firebase/auth';
+import { db, auth, googleProvider } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { getPushStatus, subscribeAndSave, unsubscribeAndRemove } from '../utils/pushNotifications';
 import {
@@ -51,8 +52,9 @@ export default function ImpostazioniPage({
   recurring = [],
   onDeleteRecurring,
   transactions = [],
+  wallets = [],
 }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   // Accordion
   const [open, setOpen] = useState([]);
@@ -74,6 +76,19 @@ export default function ImpostazioniPage({
   // Push
   const [pushStatus, setPushStatus] = useState(null);
   const [pushLoading, setPushLoading] = useState(false);
+
+  // Danger zone
+  const [deleteDataModal, setDeleteDataModal] = useState(false);
+  const [deleteAccountModal, setDeleteAccountModal] = useState(false);
+  const [deletingData, setDeletingData] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [toast, setToast] = useState('');
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 3500);
+  };
 
   // Ricorrenti edit
   const [editingRecurring, setEditingRecurring] = useState(null);
@@ -188,6 +203,44 @@ export default function ImpostazioniPage({
       setEditingRecurring(null);
     } finally {
       setSavingRec(false);
+    }
+  };
+
+  // --- Danger zone ---
+  const deleteAllUserData = async (uid) => {
+    await Promise.all([
+      ...transactions.map((t) => deleteDoc(doc(db, 'users', uid, 'transactions', t.id)).catch(() => {})),
+      ...wallets.map((w) => deleteDoc(doc(db, 'users', uid, 'wallets', w.id)).catch(() => {})),
+      ...recurring.map((r) => deleteDoc(doc(db, 'users', uid, 'recurring', r.id)).catch(() => {})),
+      deleteDoc(doc(db, 'users', uid, 'settings', 'categories')).catch(() => {}),
+      deleteDoc(doc(db, 'users', uid, 'settings', 'budgets')).catch(() => {}),
+      deleteDoc(doc(db, 'users', uid, 'data', 'notes')).catch(() => {}),
+    ]);
+  };
+
+  const handleDeleteAllData = async () => {
+    setDeletingData(true);
+    setDeleteError('');
+    await deleteAllUserData(user.uid);
+    setDeleteDataModal(false);
+    setDeletingData(false);
+    showToast('Tutti i dati sono stati eliminati.');
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    setDeleteError('');
+    await deleteAllUserData(user.uid);
+    try {
+      await deleteUser(auth.currentUser);
+    } catch (err) {
+      if (err.code === 'auth/requires-recent-login') {
+        setDeleteError('Per sicurezza Firebase richiede un accesso recente. Esci dall\'app, accedi di nuovo e riprova.');
+      } else {
+        console.error('deleteUser failed:', err);
+        setDeleteError(`Errore eliminazione account (${err.code ?? err.message}). Riprova.`);
+      }
+      setDeletingAccount(false);
     }
   };
 
@@ -442,6 +495,68 @@ export default function ImpostazioniPage({
           </div>
         )}
       </div>
+
+      {toast && <div className="toast-success">{toast}</div>}
+
+      {/* ZONA PERICOLOSA */}
+      <div className="danger-zone">
+        <div className="danger-zone-title">⚠ Zona pericolosa</div>
+        <div className="danger-zone-buttons">
+          <button className="btn-danger" onClick={() => { setDeleteError(''); setDeleteDataModal(true); }}>
+            🗑 Cancella tutti i dati
+          </button>
+          <button className="btn-danger-strong" onClick={() => { setDeleteError(''); setDeleteAccountModal(true); }}>
+            ✕ Elimina account
+          </button>
+        </div>
+      </div>
+
+      {/* MODAL: CANCELLA DATI */}
+      {deleteDataModal && (
+        <div className="modal-overlay" onClick={() => !deletingData && setDeleteDataModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Cancellare tutti i dati?</h3>
+            <p>
+              Questa operazione elimina <strong>definitivamente</strong> tutte le tue transazioni,
+              salvadanai, ricorrenti, categorie, budget e appunti. L'account rimane attivo
+              ma ripartirà da zero.
+            </p>
+            <p style={{ marginTop: '0.5rem', color: '#ef4444', fontSize: '0.85rem' }}>
+              L'operazione non è reversibile.
+            </p>
+            {deleteError && <p className="delete-error">⚠ {deleteError}</p>}
+            <div className="modal-actions">
+              <button className="btn-cancel-rec" onClick={() => setDeleteDataModal(false)} disabled={deletingData}>Annulla</button>
+              <button className="btn-delete-confirm" onClick={handleDeleteAllData} disabled={deletingData}>
+                {deletingData ? 'Cancellazione...' : 'Sì, cancella tutto'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ELIMINA ACCOUNT */}
+      {deleteAccountModal && (
+        <div className="modal-overlay" onClick={() => !deletingAccount && setDeleteAccountModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Eliminare l'account?</h3>
+            <p>
+              Questa operazione elimina <strong>definitivamente</strong> tutti i tuoi dati
+              e rimuove l'account da Firebase. Non potrai recuperare nulla.
+            </p>
+            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#6b7280' }}>
+              Potrebbe essere richiesta una nuova autenticazione Google per confermare l'operazione.
+            </p>
+            {deleteError && <p className="delete-error">⚠ {deleteError}</p>}
+            <div className="modal-actions">
+              <button className="btn-cancel-rec" onClick={() => setDeleteAccountModal(false)} disabled={deletingAccount}>Annulla</button>
+              <button className="btn-delete-confirm" onClick={handleDeleteAccount} disabled={deletingAccount}>
+                {deletingAccount ? 'Eliminazione...' : 'Sì, elimina account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: CONFERMA ELIMINAZIONE CATEGORIA ORFANA */}
       {confirmDelete && (
